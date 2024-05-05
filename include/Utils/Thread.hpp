@@ -5,18 +5,23 @@
 
 class Thread
 {
+private:
+    std::function<void(void *)> threadFunction;
+    void *threadArg;
+    pthread_t thread;
+    bool isRunning;
+    struct functionCaller *caller;
+
+protected:
+    void setThreadFunction(std::function<void(void *)> func);
+    void setThreadArg(void* arg);
+
 public:
     Thread();
     ~Thread();
     Thread(std::function<void(void *)> func, void *arg);
     void start();
     void join();
-
-private:
-    std::function<void(void *)> threadFunction;
-    void *threadArg;
-    pthread_t thread;
-    struct functionCaller *caller;
 };
 
 struct functionCaller
