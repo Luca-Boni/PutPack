@@ -14,17 +14,18 @@ class FileMonitor : public Thread
 {
 private:
     int fd;
-    std::vector<int> watchedItems;
-    std::vector<std::string> monitoredItems;
+    int watchedFolder;
+    std::string monitoredFolder;
     char buffer[EVENT_BUF_LEN];
     bool shouldStop;
     void execute(void* dummmy);
+    bool file_exists(const std::string filename);
 
 public:
     FileMonitor();
-    FileMonitor(std::vector<std::string> monitoredItems);
+    FileMonitor(std::string monitoredFolder);
     ~FileMonitor();
     void stop();
 
-    void addWatch(const char *path, uint32_t mask);
+    // void addWatch(const char *path, uint32_t mask);
 };

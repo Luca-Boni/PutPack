@@ -22,6 +22,7 @@ public:
     Thread(std::function<void(void *)> func, void *arg);
     void start();
     void join();
+    void stop();
 };
 
 struct functionCaller
