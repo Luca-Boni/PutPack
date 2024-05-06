@@ -4,7 +4,7 @@ for file in $curPath/src/Server/*.cpp
 do
     filename=${file##*/}
     filename=${filename%.*}
-    g++ -c $file -o $curPath'/obj/Server/'$filename'.o'
+    g++ -c $file -o $curPath'/obj/Server/'$filename'.o' -I $curPath'/include'
 done
 
 obj=''
