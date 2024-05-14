@@ -8,10 +8,10 @@ SocketServerSession::SocketServerSession(socket_t reader_fd)
     this->reader_fd = reader_fd;
 }
 
-void SocketServerSession::read(char buffer[BUFFER_SIZE])
+void SocketServerSession::read(char buffer[SOCKET_BUFFER_SIZE])
 {
-    bzero(buffer, BUFFER_SIZE);
-    if (::read(reader_fd, buffer, BUFFER_SIZE))
+    bzero(buffer, SOCKET_BUFFER_SIZE);
+    if (::read(reader_fd, buffer, SOCKET_BUFFER_SIZE) < 0)
     {
         std::cerr << "Error while reading from socket." << std::endl;
     }

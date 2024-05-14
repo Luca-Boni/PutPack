@@ -9,7 +9,6 @@
 SocketClient::SocketClient(const char *hostname, int port)
 {
     struct hostent *server;
-    struct sockaddr_in server_address;
 
     client_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (client_fd == 0)
@@ -27,8 +26,11 @@ SocketClient::SocketClient(const char *hostname, int port)
     server_address.sin_port = htons(port);
     server_address.sin_addr = *((struct in_addr *)server->h_addr);
     bzero(&(server_address.sin_zero), 8);
+}
 
-    if (connect(client_fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
+void SocketClient::connect()
+{
+    if (::connect(client_fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
     {
         std::cerr << "Error while connecting to server." << std::endl;
     }
@@ -43,9 +45,9 @@ void SocketClient::write(const char *buffer, int size)
     }
 }
 
-void SocketClient::read(char buffer[BUFFER_SIZE])
+void SocketClient::read(char buffer[SOCKET_BUFFER_SIZE])
 {
-    int n = ::read(client_fd, buffer, BUFFER_SIZE);
+    int n = ::read(client_fd, buffer, SOCKET_BUFFER_SIZE);
     if (n < 0)
     {
         std::cerr << "Error while reading from socket." << std::endl;

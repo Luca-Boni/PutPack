@@ -5,13 +5,13 @@
 Thread::Thread()
 {
     std::signal(SIGTERM, [](int signal) { exit(0); });
-    threadFunction = std::function<void(void *)>();
+    threadFunction = std::function<void* (void *)>();
     threadArg = NULL;
     isRunning = false;
     caller = new functionCaller(threadFunction, threadArg);
 }
 
-Thread::Thread(std::function<void(void *)> func, void *arg)
+Thread::Thread(std::function<void* (void *)> func, void *arg)
 {
     std::signal(SIGTERM, [](int signal) { exit(0); });
     threadFunction = func;
@@ -20,11 +20,12 @@ Thread::Thread(std::function<void(void *)> func, void *arg)
     caller = new functionCaller(threadFunction, threadArg);
 }
 
-void Thread::setThreadFunction(std::function<void(void *)> func)
+void Thread::setThreadFunction(std::function<void* (void *)> func)
 {
     if (!isRunning)
     {
         threadFunction = func;
+        caller->function = threadFunction;
     }else{
         std::cerr << "Thread is already running" << std::endl;
     }
@@ -35,6 +36,7 @@ void Thread::setThreadArg(void *arg)
     if (!isRunning)
     {
         threadArg = arg;
+        caller->args = threadArg;
     }else{
         std::cerr << "Thread is already running" << std::endl;
     }

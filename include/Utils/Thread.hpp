@@ -6,20 +6,20 @@
 class Thread
 {
 private:
-    std::function<void(void *)> threadFunction;
+    std::function<void*(void *)> threadFunction;
     void *threadArg;
     pthread_t thread;
     bool isRunning;
     struct functionCaller *caller;
 
 protected:
-    void setThreadFunction(std::function<void(void *)> func);
+    void setThreadFunction(std::function<void*(void *)> func);
     void setThreadArg(void* arg);
 
 public:
     Thread();
     ~Thread();
-    Thread(std::function<void(void *)> func, void *arg);
+    Thread(std::function<void*(void *)> func, void *arg);
     void start();
     void join();
     void stop();
@@ -27,7 +27,7 @@ public:
 
 struct functionCaller
 {
-    std::function<void(void *)> function;
+    std::function<void*(void *)> function;
     void *args;
 
     static void *callme_static(void *me)
@@ -36,9 +36,9 @@ struct functionCaller
     }
     void *callme()
     {
-        function(args);
+        return function(args);
         return NULL;
     }
 
-    functionCaller(std::function<void(void *)> c, void *a) : function(c), args(a) {}
+    functionCaller(std::function<void*(void *)> c, void *a) : function(c), args(a) {}
 };
