@@ -2,10 +2,11 @@
 #include <iostream>
 #include <cstring>
 #include <unistd.h>
-#include <sys/socket.h>
 
 SocketServer::SocketServer(int port)
 {
+    address_len = sizeof(address);
+
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == 0)
     {
@@ -17,10 +18,17 @@ SocketServer::SocketServer(int port)
     address.sin_addr.s_addr = INADDR_ANY;
     bzero(&(address.sin_zero), 8);
 
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
+    if (bind(server_fd, (struct sockaddr *)&address, address_len) < 0)
     {
         std::cerr << "Error while binding socket." << std::endl;
     }
+
+    if (getsockname(server_fd, (struct sockaddr *)&address, &address_len) < 0)
+    {
+        std::cerr << "Error while getting socket info." << std::endl;
+    }
+
+    this->port = ntohs(address.sin_port);
 }
 
 socket_t SocketServer::listenAndAccept()

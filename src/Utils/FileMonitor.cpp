@@ -2,22 +2,17 @@
 #include <iostream>
 #include <sys/stat.h>
 
-#define FILE_CHANGE IN_CLOSE_WRITE | IN_MOVED_TO //| IN_CREATE
-#define FILE_REMOVE IN_DELETE | IN_MOVED_FROM
-
 bool FileMonitor::file_exists(const std::string filename)
 {
     struct stat buffer;
     return (stat((monitoredFolder + "/" + filename).c_str(), &buffer) == 0);
 }
 
-FileMonitor::FileMonitor() : Thread(std::bind(&FileMonitor::execute, this, std::placeholders::_1), NULL)
-{
-    shouldStop = false;
-}
+FileMonitor::FileMonitor(){}
 
-FileMonitor::FileMonitor(std::string monitoredFolder) : Thread(std::bind(&FileMonitor::execute, this, std::placeholders::_1), NULL)
+FileMonitor::FileMonitor(std::string monitoredFolder, int serverPort, const std::string hostAddress) : Thread(std::bind(&FileMonitor::execute, this, std::placeholders::_1), NULL)
 {
+    socket = SocketClient(hostAddress.c_str(), serverPort);
     this->monitoredFolder = monitoredFolder;
     shouldStop = false;
 }
@@ -27,13 +22,14 @@ FileMonitor::~FileMonitor()
     shouldStop = true;
 }
 
-void FileMonitor::execute(void *args)
+void* FileMonitor::execute(void *args)
 {
+    socket.connect();
     fd = inotify_init();
     if (fd < 0)
         std::cerr << "Error initializing inotify" << std::endl;
 
-    int wd = inotify_add_watch(fd, monitoredFolder.c_str(), FILE_CHANGE | FILE_REMOVE);
+    int wd = inotify_add_watch(fd, monitoredFolder.c_str(), IN_FILE_CHANGE | IN_FILE_REMOVE);
     if (wd == -1)
         std::cerr << "Error adding watch to file" << std::endl;
     else
@@ -48,26 +44,47 @@ void FileMonitor::execute(void *args)
             std::cerr << "Error while reading file monitor event" << std::endl;
 
         int i = 0;
+        char *msg_buffer;
         while (i < length)
         {
             struct inotify_event *event = (struct inotify_event *)&buffer[i];
             if (event->len)
             {
-                if (event->mask & (FILE_CHANGE | FILE_REMOVE))
+                if (event->mask & (IN_FILE_CHANGE | IN_FILE_REMOVE))
                 {
                     if (file_exists(event->name))
                     {
                         if (event->mask & IN_ISDIR)
+                        {
                             std::cout << "Directory " << event->name << " modified." << std::endl;
+                            msg_buffer = FileMonitorProtocol::encode(FileMonitorProtocol::FMP_FILE_CHANGE, event->name);
+                            socket.write(msg_buffer, strlen(msg_buffer));
+                            delete msg_buffer;
+                        }
                         else
+                        {
                             std::cout << "File " << event->name << " modified." << std::endl;
+                            msg_buffer = FileMonitorProtocol::encode(FileMonitorProtocol::FMP_FILE_CHANGE, event->name);
+                            socket.write(msg_buffer, strlen(msg_buffer));
+                            delete msg_buffer;
+                        }
                     }
                     else
                     {
                         if (event->mask & IN_ISDIR)
+                        {
                             std::cout << "Directory " << event->name << " deleted." << std::endl;
+                            msg_buffer = FileMonitorProtocol::encode(FileMonitorProtocol::FMP_FILE_REMOVE, event->name);
+                            socket.write(msg_buffer, strlen(msg_buffer));
+                            delete msg_buffer;
+                        }
                         else
+                        {
                             std::cout << "File " << event->name << " deleted." << std::endl;
+                            msg_buffer = FileMonitorProtocol::encode(FileMonitorProtocol::FMP_FILE_REMOVE, event->name);
+                            socket.write(msg_buffer, strlen(msg_buffer));
+                            delete msg_buffer;
+                        }
                     }
                 }
                 i += EVENT_SIZE + event->len;
@@ -78,6 +95,8 @@ void FileMonitor::execute(void *args)
     inotify_rm_watch(fd, watchedFolder);
 
     close(fd);
+
+    return NULL;
 }
 
 void FileMonitor::stop()
@@ -87,12 +106,3 @@ void FileMonitor::stop()
     shouldStop = true;
     Thread::stop();
 }
-
-// void FileMonitor::addWatch(const char *path, uint32_t mask)
-// {
-//     int wd = inotify_add_watch(fd, path, mask);
-//     if (wd == -1)
-//         std::cerr << "Error adding watch to file" << std::endl;
-//     else
-//         watchedItems.push_back(wd);
-// }

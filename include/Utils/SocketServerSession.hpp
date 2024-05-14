@@ -6,12 +6,12 @@ class SocketServerSession
 {
 private:
     socket_t reader_fd;
-    char buffer[BUFFER_SIZE];
+    char buffer[SOCKET_BUFFER_SIZE];
 
 public:
     SocketServerSession(socket_t reader_fd);
     ~SocketServerSession(){};
-    void read(char buffer[BUFFER_SIZE]);
+    void read(char buffer[SOCKET_BUFFER_SIZE]);
     void write(const char *buffer, int size);
     void close();
 };

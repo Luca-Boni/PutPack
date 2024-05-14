@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Utils/Thread.hpp"
+#include "Utils/SocketClient.hpp"
+#include "Utils/FileMonitorProtocol.hpp"
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/inotify.h>
@@ -18,14 +20,13 @@ private:
     std::string monitoredFolder;
     char buffer[EVENT_BUF_LEN];
     bool shouldStop;
-    void execute(void* dummmy);
+    SocketClient socket;
+    void* execute(void* dummmy);
     bool file_exists(const std::string filename);
 
 public:
     FileMonitor();
-    FileMonitor(std::string monitoredFolder);
+    FileMonitor(std::string monitoredFolder, int serverPort, const std::string hostAddress);
     ~FileMonitor();
     void stop();
-
-    // void addWatch(const char *path, uint32_t mask);
 };
