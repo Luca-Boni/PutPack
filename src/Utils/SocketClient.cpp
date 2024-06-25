@@ -36,9 +36,9 @@ void SocketClient::connect()
     }
 }
 
-void SocketClient::write(const char *buffer, int size)
+void SocketClient::write(const char buffer[SOCKET_BUFFER_SIZE])
 {
-    ::write(client_fd, buffer, size);
+    int size = ::write(client_fd, buffer, SOCKET_BUFFER_SIZE);
     if (size < 0)
     {
         std::cerr << "Error while writing to socket." << std::endl;

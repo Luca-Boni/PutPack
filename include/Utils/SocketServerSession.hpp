@@ -12,6 +12,6 @@ public:
     SocketServerSession(socket_t reader_fd);
     ~SocketServerSession(){};
     void read(char buffer[SOCKET_BUFFER_SIZE]);
-    void write(const char *buffer, int size);
+    void write(const char buffer[SOCKET_BUFFER_SIZE]);
     void close();
 };

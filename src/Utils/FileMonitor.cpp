@@ -10,7 +10,7 @@ bool FileMonitor::file_exists(const std::string filename)
 
 FileMonitor::FileMonitor(){}
 
-FileMonitor::FileMonitor(std::string monitoredFolder, int serverPort, const std::string hostAddress) : Thread(std::bind(&FileMonitor::execute, this, std::placeholders::_1), NULL)
+FileMonitor::FileMonitor(const std::string monitoredFolder, const int serverPort, const std::string hostAddress="localhost") : Thread(std::bind(&FileMonitor::execute, this, std::placeholders::_1), NULL)
 {
     socket = SocketClient(hostAddress.c_str(), serverPort);
     this->monitoredFolder = monitoredFolder;
@@ -58,14 +58,14 @@ void* FileMonitor::execute(void *args)
                         {
                             std::cout << "Directory " << event->name << " modified." << std::endl;
                             msg_buffer = FileMonitorProtocol::encode(FileMonitorProtocol::FMP_FILE_CHANGE, event->name);
-                            socket.write(msg_buffer, strlen(msg_buffer));
+                            socket.write(msg_buffer);
                             delete msg_buffer;
                         }
                         else
                         {
                             std::cout << "File " << event->name << " modified." << std::endl;
                             msg_buffer = FileMonitorProtocol::encode(FileMonitorProtocol::FMP_FILE_CHANGE, event->name);
-                            socket.write(msg_buffer, strlen(msg_buffer));
+                            socket.write(msg_buffer);
                             delete msg_buffer;
                         }
                     }
@@ -75,14 +75,14 @@ void* FileMonitor::execute(void *args)
                         {
                             std::cout << "Directory " << event->name << " deleted." << std::endl;
                             msg_buffer = FileMonitorProtocol::encode(FileMonitorProtocol::FMP_FILE_REMOVE, event->name);
-                            socket.write(msg_buffer, strlen(msg_buffer));
+                            socket.write(msg_buffer);
                             delete msg_buffer;
                         }
                         else
                         {
                             std::cout << "File " << event->name << " deleted." << std::endl;
                             msg_buffer = FileMonitorProtocol::encode(FileMonitorProtocol::FMP_FILE_REMOVE, event->name);
-                            socket.write(msg_buffer, strlen(msg_buffer));
+                            socket.write(msg_buffer);
                             delete msg_buffer;
                         }
                     }

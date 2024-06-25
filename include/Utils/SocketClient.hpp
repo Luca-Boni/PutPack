@@ -16,7 +16,7 @@ public:
     SocketClient(){};
     ~SocketClient(){};
     void connect();
-    void write(const char *buffer, int size);
+    void write(const char buffer[SOCKET_BUFFER_SIZE]);
     void read(char buffer[SOCKET_BUFFER_SIZE]);
     void close();
 

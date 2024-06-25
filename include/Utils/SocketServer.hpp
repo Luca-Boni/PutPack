@@ -19,8 +19,8 @@ private:
     char buffer[SOCKET_BUFFER_SIZE];
 
 public:
-    SocketServer(int port);
-    SocketServer(){};
+    SocketServer(int port = 0);
+    // SocketServer(){};
     ~SocketServer(){};
     socket_t listenAndAccept();
     void close();

@@ -1,6 +1,7 @@
 .vscode
 tmp
 src/tests
+data/*
 
 *.o
 *.exe

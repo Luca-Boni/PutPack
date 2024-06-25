@@ -26,7 +26,7 @@ private:
 
 public:
     FileMonitor();
-    FileMonitor(std::string monitoredFolder, int serverPort, const std::string hostAddress);
+    FileMonitor(const std::string monitoredFolder, const int serverPort, const std::string hostAddress="localhost");
     ~FileMonitor();
     void stop();
 };

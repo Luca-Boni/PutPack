@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Utils/ClientProtocol.hpp"
+#include "Utils/Protocol.hpp"
 #include "Utils/SocketClient.hpp"
 #include <cstring>
 #include <sys/inotify.h>

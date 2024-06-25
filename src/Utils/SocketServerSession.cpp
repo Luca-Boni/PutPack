@@ -17,9 +17,9 @@ void SocketServerSession::read(char buffer[SOCKET_BUFFER_SIZE])
     }
 }
 
-void SocketServerSession::write(const char *message, int size)
+void SocketServerSession::write(const char message[SOCKET_BUFFER_SIZE])
 {
-    if (::write(reader_fd, message, size) < 0)
+    if (::write(reader_fd, message, SOCKET_BUFFER_SIZE) < 0)
     {
         std::cerr << "Error while writing to socket." << std::endl;
     }

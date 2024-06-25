@@ -8,7 +8,7 @@ Thread::Thread()
     threadFunction = std::function<void* (void *)>();
     threadArg = NULL;
     isRunning = false;
-    caller = new functionCaller(threadFunction, threadArg);
+    caller = new functionCaller(threadFunction, threadArg, isRunning);
 }
 
 Thread::Thread(std::function<void* (void *)> func, void *arg)
@@ -17,7 +17,7 @@ Thread::Thread(std::function<void* (void *)> func, void *arg)
     threadFunction = func;
     threadArg = arg;
     isRunning = false;
-    caller = new functionCaller(threadFunction, threadArg);
+    caller = new functionCaller(threadFunction, threadArg, isRunning);
 }
 
 void Thread::setThreadFunction(std::function<void* (void *)> func)

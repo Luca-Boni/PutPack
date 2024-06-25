@@ -29,6 +29,7 @@ struct functionCaller
 {
     std::function<void*(void *)> function;
     void *args;
+    bool& isRunning;
 
     static void *callme_static(void *me)
     {
@@ -36,9 +37,15 @@ struct functionCaller
     }
     void *callme()
     {
-        return function(args);
-        return NULL;
+        void* return_value = NULL;        
+        isRunning = true;
+
+        return_value = function(args);
+        
+        isRunning = false;
+
+        return return_value;
     }
 
-    functionCaller(std::function<void*(void *)> c, void *a) : function(c), args(a) {}
+    functionCaller(std::function<void*(void *)> c, void *a, bool& r) : function(c), args(a), isRunning(r) {}
 };
