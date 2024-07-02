@@ -3,13 +3,12 @@
 #include <iostream>
 
 template <class T>
-Mutex& MutexHash<T>::getOrAddMutex(T key)
+Mutex* MutexHash<T>::getOrAddMutex(T key)
 {
     hashMutex.lock();
-    std::cout << (mutexes.find(key) == mutexes.end()) << std::endl;
     if (mutexes.find(key) == mutexes.end())
     {
-        mutexes[key] = Mutex();
+        mutexes[key] = new Mutex();
     }
     hashMutex.unlock();
     return mutexes[key];
@@ -18,13 +17,13 @@ Mutex& MutexHash<T>::getOrAddMutex(T key)
 template <class T>
 void MutexHash<T>::lock(T key)
 {
-    mutexes[key].lock();
+    mutexes[key]->lock();
 }
 
 template <class T>
 void MutexHash<T>::unlock(T key)
 {
-    mutexes[key].unlock();
+    mutexes[key]->unlock();
 }
 
 template class MutexHash<int>;

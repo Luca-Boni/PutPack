@@ -16,11 +16,9 @@ private:
     int valread;
     struct sockaddr_in address;
     socklen_t address_len;
-    char buffer[SOCKET_BUFFER_SIZE];
 
 public:
     SocketServer(int port = 0);
-    // SocketServer(){};
     ~SocketServer(){};
     socket_t listenAndAccept();
     void close();

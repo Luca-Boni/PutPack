@@ -1,17 +1,20 @@
 #pragma once
 
+#include "Utils/Mutex.hpp"
 #include "Utils/SocketServer.hpp"
 
 class SocketServerSession
 {
 private:
     socket_t reader_fd;
-    char buffer[SOCKET_BUFFER_SIZE];
+    Mutex writeMutex;
+    Mutex readMutex;
 
 public:
+    SocketServerSession(){};
     SocketServerSession(socket_t reader_fd);
     ~SocketServerSession(){};
-    void read(char buffer[SOCKET_BUFFER_SIZE]);
-    void write(const char buffer[SOCKET_BUFFER_SIZE]);
+    void write(const char* buffer);
+    char* read();
     void close();
 };

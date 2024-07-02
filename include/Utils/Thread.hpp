@@ -6,30 +6,31 @@
 class Thread
 {
 private:
-    std::function<void*(void *)> threadFunction;
+    std::function<void *(void *)> threadFunction;
     void *threadArg;
     pthread_t thread;
     bool isRunning;
     struct functionCaller *caller;
 
 protected:
-    void setThreadFunction(std::function<void*(void *)> func);
-    void setThreadArg(void* arg);
+    void setThreadFunction(std::function<void *(void *)> func);
+    void setThreadArg(void *arg);
 
 public:
     Thread();
     ~Thread();
-    Thread(std::function<void*(void *)> func, void *arg);
+    Thread(std::function<void *(void *)> func, void *arg);
     void start();
     void join();
     void stop();
+    bool running();
 };
 
 struct functionCaller
 {
-    std::function<void*(void *)> function;
+    std::function<void *(void *)> function;
     void *args;
-    bool& isRunning;
+    bool *isRunning;
 
     static void *callme_static(void *me)
     {
@@ -37,15 +38,15 @@ struct functionCaller
     }
     void *callme()
     {
-        void* return_value = NULL;        
-        isRunning = true;
+        void *return_value = NULL;
+        *isRunning = true;
 
         return_value = function(args);
-        
-        isRunning = false;
+
+        *isRunning = false;
 
         return return_value;
     }
 
-    functionCaller(std::function<void*(void *)> c, void *a, bool& r) : function(c), args(a), isRunning(r) {}
+    functionCaller(std::function<void *(void *)> c, void *a, bool *r) : function(c), args(a), isRunning(r) {}
 };

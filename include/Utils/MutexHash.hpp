@@ -7,13 +7,13 @@ template <class T>
 class MutexHash
 {
 private:
-    std::unordered_map<T, Mutex> mutexes;
+    std::unordered_map<T, Mutex*> mutexes;
     Mutex hashMutex;
 
 public:
-    MutexHash() = default;
-    ~MutexHash() = default;
-    Mutex& getOrAddMutex(T key);
+    MutexHash(){hashMutex = Mutex(); mutexes = std::unordered_map<T, Mutex*>();};
+    ~MutexHash(){for (auto it = mutexes.begin(); it != mutexes.end(); it++) delete it->second;};
+    Mutex* getOrAddMutex(T key);
     void lock(T key);
     void unlock(T key);
 };
