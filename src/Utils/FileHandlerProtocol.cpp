@@ -1,4 +1,5 @@
 #include "Utils/FileHandlerProtocol.hpp"
+#include <iostream>
 
 FileHandlerMessage::FileHandlerMessage()
 {
@@ -53,6 +54,7 @@ char *FileHandlerMessage::encode()
 
 FileHandlerMessage::~FileHandlerMessage()
 {
+    // TODO: Fix double free
     // delete[] filename;
     // delete[] data;
 }

@@ -27,12 +27,24 @@ FileHandler::~FileHandler() {}
 
 void *FileHandler::execute(void *dummy)
 {
-    socketClient->connect();
+    if(socketClient != NULL)
+        socketClient->connect();
     mutex->lock();
-    if (mode == FileHandlerMode::READ)
+    switch (mode)
+    {
+    case FileHandlerMode::READ:
         readFile();
-    else
+        break;
+    case FileHandlerMode::WRITE:
         writeFile();
+        break;
+    case FileHandlerMode::DELETE:
+        deleteFile();
+        break;
+    default:
+        std::cerr << "Unknown mode" << std::endl;
+        break;
+    }
     mutex->unlock();
     return NULL;
 }
@@ -93,6 +105,11 @@ void FileHandler::writeFile()
             delete[] buffer;
         } while (size > 0);
     }
+}
+
+void FileHandler::deleteFile()
+{
+    std::remove((dataFolder + user + "/" + filename).c_str());
 }
 
 void FileHandler::stop()

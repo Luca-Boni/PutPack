@@ -11,7 +11,8 @@
 enum class FileHandlerMode : unsigned char
 {
     READ,
-    WRITE
+    WRITE,
+    DELETE
 };
 
 struct FileHandlerMessage

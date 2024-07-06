@@ -23,6 +23,7 @@ private:
     void *execute(void *dummy);
     void readFile();
     void writeFile();
+    void deleteFile();
 
 public:
     FileHandler();
