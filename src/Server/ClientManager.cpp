@@ -1,5 +1,5 @@
 #include "Server/ClientManager.hpp"
-#include "ClientUserProtocol.hpp"
+#include "Server/ClientUserProtocol.hpp"
 #include "Utils/FileHandlerProtocol.hpp"
 #include <iostream>
 
@@ -49,6 +49,8 @@ void *ClientManager::execute(void *dummy)
 
         delete[] buffer;
     }
+
+    return NULL;
 }
 
 void ClientManager::processSyncAllMsg(const char *buffer)
