@@ -4,11 +4,11 @@
 #include "Utils/FileDeleter.hpp"
 #include <unordered_map>
 #include <iostream>
+#include <filesystem>
 
-UserManager::UserManager(const std::string username, const int serverDaemonPort) : Thread(std::bind(&UserManager::execute, this, std::placeholders::_1), NULL),
-                                                                                   username(username),
-                                                                                   serverDaemonPort(serverDaemonPort),
-                                                                                   shouldStop(false)
+UserManager::UserManager(const std::string username) : Thread(std::bind(&UserManager::execute, this, std::placeholders::_1), NULL),
+                                                       username(username),
+                                                       shouldStop(false)
 {
     files = std::vector<std::string>();
 
@@ -24,6 +24,8 @@ UserManager::UserManager(const std::string username, const int serverDaemonPort)
 void *UserManager::execute(void *dummy)
 {
     socket = SocketServerSession(socketServer.listenAndAccept());
+    for (const auto &file : std::filesystem::directory_iterator("./data/" + username))
+        files.push_back(file.path().filename());
 
     do
     {
@@ -31,24 +33,24 @@ void *UserManager::execute(void *dummy)
 
         switch (buffer[0])
         {
-        case NEW_CLIENT_MSG:
+        case NEW_CLIENT_MSG: // Mensagem de novo cliente
             processNewClientMsg(buffer);
             break;
-        case END_CLIENT_MSG:
+        case END_CLIENT_MSG: // Mensagem de desconexão do cliente
             processEndClientMsg(buffer);
             break;
-        case FILE_WRITE_MSG:
+        case FILE_WRITE_MSG: // Escreve um arquivo no servidor -> mensagem vinda do ClientManager -> envia diretamnte para os clientes
             processFileWriteMsg(buffer);
             break;
-        case FILE_READ_MSG:
+        case FILE_READ_MSG: // Leu um arquivo do servidor e manda diretamente para o cliente, sem ClientManager
             processFileReadMsg(buffer);
             break;
-        case SYNC_MSG:
+        case SYNC_MSG: // Mensagem de sync_dir
             processSyncAllMsg(buffer);
             break;
-        case FILE_DELETE_MSG:
+        case FILE_DELETE_MSG: // Deleta um arquivo do servidor
             processFileDeleteMsg(buffer);
-        case STOP_MSG:
+        case STOP_MSG: // Para a thread
             shouldStop = true;
             break;
         default:
@@ -82,7 +84,7 @@ void UserManager::processNewClientMsg(const char *buffer)
     }
     else
     {
-        clientManagerSockets[msg.clientId] = msg.socketClient;
+        clientManagerSockets[msg.clientId] = msg.clientSocket;
         readAllFiles(msg.clientId);
     }
 }
@@ -99,6 +101,11 @@ void UserManager::processEndClientMsg(const char *buffer)
     {
         clientManagerSockets.erase(msg.clientId);
     }
+
+    if (clientManagerSockets.size() == 0) // Para o UserManager se não houver mais clientes conectados
+    {
+        shouldStop = true;
+    }
 }
 
 void UserManager::processSyncAllMsg(const char *buffer)
@@ -112,12 +119,22 @@ void UserManager::processFileWriteMsg(const char *buffer)
 {
     struct FileHandlerMessage msg;
     msg.decode(buffer);
+
+    for (auto &client : clientManagerSockets) // Encaminha modificação para todos os clientes - exceto o que enviou a mensagem
+    {
+        if (client.first != msg.clientId)
+        {
+            client.second->write(buffer);
+        }
+    }
+
     FileWriter *writer;
-    if (std::find(files.begin(), files.end(), msg.filename) == files.end())
+
+    if (std::find(files.begin(), files.end(), msg.filename) == files.end()) // Caso o arquivo ainda não exista
     {
         files.push_back(msg.filename);
     }
-    if (fileWriters.find(msg.fileHandlerId) == fileWriters.end())
+    if (fileWriters.find(msg.fileHandlerId) == fileWriters.end()) // Caso o arquivo ainda não esteja sendo escrito
     {
         writer = new FileWriter(username, msg.clientId, fileMutexes.getOrAddMutex(msg.filename), msg.filename, socketServer.getPort());
         fileWriters[msg.fileHandlerId] = writer;
@@ -126,7 +143,7 @@ void UserManager::processFileWriteMsg(const char *buffer)
         fileWriterSessions[msg.fileHandlerId] = newSession;
         newSession->write(buffer);
     }
-    else
+    else // Caso o arquivo já esteja sendo escrito
     {
         SocketServerSession *session = fileWriterSessions[msg.fileHandlerId];
         session->write(buffer);
@@ -148,7 +165,7 @@ void UserManager::processFileReadMsg(const char *buffer)
 {
     struct FileHandlerMessage msg;
     msg.decode(buffer);
-    SocketClient *clientManagerSocket = clientManagerSockets[msg.clientId];
+    SocketServerSession *clientManagerSocket = clientManagerSockets[msg.clientId];
     clientManagerSocket->write(buffer);
 }
 

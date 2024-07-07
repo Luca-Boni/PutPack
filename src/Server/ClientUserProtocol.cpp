@@ -13,7 +13,7 @@ char* NewClientMsg::encode()
     memcpy(buffer + offset, &clientId, sizeof(unsigned long long));
     offset += sizeof(unsigned long long);
 
-    memcpy(buffer + offset, socketClient, sizeof(SocketClient*));
+    memcpy(buffer + offset, clientSocket, sizeof(SocketServerSession*));
 
     return buffer;
 }
@@ -21,7 +21,7 @@ char* NewClientMsg::encode()
 void NewClientMsg::decode(const char* buffer)
 {
     clientId = *((unsigned long long*)(buffer + 1));
-    socketClient = *((SocketClient**)(buffer + 1 + sizeof(unsigned long long)));
+    clientSocket = *((SocketServerSession**)(buffer + 1 + sizeof(unsigned long long)));
 }
 
 char* EndClientMsg::encode()
@@ -33,6 +33,9 @@ char* EndClientMsg::encode()
     offset += 1;
 
     memcpy(buffer + offset, &clientId, sizeof(unsigned long long));
+    offset += sizeof(unsigned long long);
+
+    strcpy(buffer + offset, username);
 
     return buffer;
 }
@@ -40,4 +43,5 @@ char* EndClientMsg::encode()
 void EndClientMsg::decode(const char* buffer)
 {
     clientId = *((unsigned long long*)(buffer + 1));
+    strcpy(username, buffer + 1 + sizeof(unsigned long long));
 }

@@ -53,7 +53,6 @@ void SocketClient::connect()
         }
         else
         {
-            std::cout << "Connected to server." << std::endl;
             connected = true;
         }
     }

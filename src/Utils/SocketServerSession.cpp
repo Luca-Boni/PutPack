@@ -3,8 +3,10 @@
 #include <iostream>
 #include <unistd.h>
 
-SocketServerSession::SocketServerSession(socket_t reader_fd) : reader_fd(reader_fd)
+SocketServerSession::SocketServerSession(std::tuple<socket_t, struct sockaddr_in> sessionInfo)
 {
+    this->reader_fd = std::get<0>(sessionInfo);
+    this->clientAddress = std::get<1>(sessionInfo);
     this->writeMutex = Mutex();
     this->readMutex = Mutex();
 }

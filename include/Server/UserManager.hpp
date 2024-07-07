@@ -20,7 +20,6 @@ private:
     SocketServer socketServer;
     SocketServerSession socket;         // Socket to communicate with ClientManager
     SocketClient socketClient;          // Sent to ClientManagers and FileReaders to communicate with this thread
-    int serverDaemonPort;
 
     MutexHash<std::string> fileMutexes; // Mutexes to protect the files
 
@@ -28,7 +27,7 @@ private:
     std::unordered_map<unsigned long long, FileWriter *> fileWriters;
     std::unordered_map<unsigned long long, SocketServerSession *> fileWriterSessions;
 
-    std::unordered_map<unsigned long long, SocketClient *> clientManagerSockets;
+    std::unordered_map<unsigned long long, SocketServerSession *> clientManagerSockets;
 
     void *execute(void *dummy);
     void processFileWriteMsg(const char *buffer);
@@ -41,7 +40,7 @@ private:
     void readAllFiles(unsigned long long clientId);
 
 public:
-    UserManager(const std::string username, const int serverDaemonPort);
+    UserManager(const std::string username);
     ~UserManager(){};
     SocketClient *getSocketClient() { return &socketClient; };
     void stopGraciously();
