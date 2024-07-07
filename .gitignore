@@ -2,8 +2,8 @@
 tmp
 src/tests
 data/*
-bin/Client/*
-bin/Server/*
+bin/
+obj/
 
 *.o
 *.exe
