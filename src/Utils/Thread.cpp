@@ -4,8 +4,6 @@
 
 Thread::Thread()
 {
-    std::signal(SIGTERM, [](int signal)
-                { exit(0); });
     threadFunction = std::function<void *(void *)>();
     threadArg = NULL;
     isRunning = false;
@@ -14,8 +12,6 @@ Thread::Thread()
 
 Thread::Thread(std::function<void *(void *)> func, void *arg)
 {
-    std::signal(SIGTERM, [](int signal)
-                { exit(0); });
     threadFunction = func;
     threadArg = arg;
     isRunning = false;
@@ -60,14 +56,15 @@ void Thread::join()
 
 void Thread::stop()
 {
-    pthread_kill(thread, SIGTERM);
-    // pthread_join(thread, NULL);
+    if (isRunning)
+        pthread_cancel(thread);
     isRunning = false;
 }
 
 Thread::~Thread()
 {
-    delete caller;
+    if (caller != NULL)
+        delete caller;
     stop();
 }
 

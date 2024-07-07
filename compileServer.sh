@@ -44,4 +44,4 @@ do
     obj=$obj' '$file
 done
 
-g++ -o $curPath/bin/Server/PutPack.exe $obj
+g++ -o $curPath/bin/Server/PutPackServer $obj

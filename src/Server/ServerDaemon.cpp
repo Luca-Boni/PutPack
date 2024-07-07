@@ -19,14 +19,13 @@ ServerDaemon::ServerDaemon() : Thread(std::bind(&ServerDaemon::execute, this, st
 void *ServerDaemon::execute(void *dummy)
 {
     socket = SocketServerSession(socketServer.listenAndAccept()); // Aceita conexão com o ConnectionManager -> utiliza a socketClient
-
     do
     {
         char *buffer = socket.read();
 
         switch (buffer[0])
         {
-        case CLIENT_CONNECTED_MSG: // Mensagem de novo cliente
+        case CLIENT_CONNECTED_MSG: // Mensagem de novo cliente -> recebido do ConnectionManager
             processClientConnectedMsg(buffer);
             break;
         case END_CLIENT_MSG: // Mensagem de desconexão do cliente

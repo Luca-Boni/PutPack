@@ -24,6 +24,7 @@ private:
 
     void *execute(void *dummy);
     void processClientConnectedMsg(const char *buffer);
+    void processNewClientMsg(const char *buffer);
     void processClientDisconnectedMsg(const char *buffer);
 
 public:
