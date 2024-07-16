@@ -2,7 +2,11 @@
 
 Mutex::Mutex()
 {
-    pthread_mutex_init(&mutex, NULL);
+    int count = 0;
+    while(pthread_mutex_init(&mutex, NULL) < 0 && count < 30)
+    {
+        count++;
+    }
 }
 
 Mutex::~Mutex()

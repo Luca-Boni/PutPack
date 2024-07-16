@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 
-#define SOCKET_BUFFER_SIZE 8096
+#define SOCKET_BUFFER_SIZE 4096
 #define MAX_CONNECT_TRIES 100
 
 namespace SocketClientError{

@@ -14,14 +14,3 @@ struct NewClientMsg
     char* encode();
     void decode(const char* buffer);
 };
-
-struct EndClientMsg
-{
-    unsigned long long clientId;
-    char username[USERNAME_SIZE];
-
-    EndClientMsg(unsigned long long clientId, char username[USERNAME_SIZE]) : clientId(clientId) {strcpy(this->username, username);}
-    EndClientMsg() : clientId(0), username(""){}
-    char* encode();
-    void decode(const char* buffer);
-};

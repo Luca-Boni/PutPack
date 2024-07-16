@@ -36,6 +36,7 @@ private:
     void processEndClientMsg(const char *buffer);
     void processSyncAllMsg(const char *buffer);
     void processFileDeleteMsg(const char *buffer);
+    void processFileDownloadMsg(const char *buffer);
     
     void readAllFiles(unsigned long long clientId);
 

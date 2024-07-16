@@ -1,5 +1,10 @@
 curPath=$(dirname $0)
 
+for file in $curPath/obj/Server/*.o
+do
+    rm $file
+done
+
 if [ ! -d $curPath'/obj' ]
 then
     mkdir $curPath'/obj'

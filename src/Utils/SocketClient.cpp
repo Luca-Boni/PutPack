@@ -73,14 +73,22 @@ void SocketClient::write(const char* buffer)
 
 char* SocketClient::read()
 {
-    char* buffer = new char[SOCKET_BUFFER_SIZE]();
     readMutex.lock();
-    int n = ::read(client_fd, buffer, SOCKET_BUFFER_SIZE);
-    if (n < 0)
+    char *buffer = new char[SOCKET_BUFFER_SIZE]();
+    int total_read = 0;
+
+    while (total_read < SOCKET_BUFFER_SIZE)
     {
-        this->errors |= SocketClientError::CANT_READ;
-        std::cerr << "Error while reading from socket." << std::endl;
+        int read = 0;
+        if ((read = ::read(client_fd, buffer + total_read, SOCKET_BUFFER_SIZE - total_read)) < 0)
+        {
+            std::cerr << "Error while reading from socket." << std::endl;
+            break;
+        }
+        else
+            total_read += read;
     }
+    
     readMutex.unlock();
     return buffer;
 }

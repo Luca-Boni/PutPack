@@ -13,12 +13,22 @@ SocketServerSession::SocketServerSession(std::tuple<socket_t, struct sockaddr_in
 
 char* SocketServerSession::read()
 {
-    char *buffer = new char[SOCKET_BUFFER_SIZE]();
     readMutex.lock();
-    if (::read(reader_fd, buffer, SOCKET_BUFFER_SIZE) < 0)
+    char *buffer = new char[SOCKET_BUFFER_SIZE]();
+    int total_read = 0;
+
+    while (total_read < SOCKET_BUFFER_SIZE)
     {
-        std::cerr << "Error while reading from socket." << std::endl;
+        int read = 0;
+        if ((read = ::read(reader_fd, buffer + total_read, SOCKET_BUFFER_SIZE - total_read)) < 0)
+        {
+            std::cerr << "Error while reading from socket." << std::endl;
+            break;
+        }
+        else
+            total_read += read;
     }
+    
     readMutex.unlock();
     return buffer;
 }

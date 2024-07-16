@@ -24,12 +24,24 @@ UserManager::UserManager(const std::string username) : Thread(std::bind(&UserMan
 void *UserManager::execute(void *dummy)
 {
     socket = SocketServerSession(socketServer.listenAndAccept());
-    for (const auto &file : std::filesystem::directory_iterator("./data/" + username))
+
+    char path[FILENAME_MAX];
+    ssize_t count = readlink("/proc/self/exe", path, FILENAME_MAX);
+    std::string exe_dir = std::filesystem::path(std::string(path, (count > 0) ? count : 0)).parent_path().string();
+
+    if (!std::filesystem::exists(exe_dir + "/sync_dir_" + username + "/"))
+    {
+        std::filesystem::create_directory(exe_dir + "/sync_dir_" + username + "/");
+    }
+
+    for (const auto &file : std::filesystem::directory_iterator(exe_dir + "/sync_dir_" + username + "/"))
         files.push_back(file.path().filename());
 
     do
     {
         char *buffer = socket.read();
+        if (+buffer[0] != FILE_WRITE_MSG && +buffer[0] != FILE_READ_MSG)
+            std::cout << "UM Received message: " << +buffer[0] << std::endl;
 
         switch (buffer[0])
         {
@@ -50,6 +62,10 @@ void *UserManager::execute(void *dummy)
             break;
         case FILE_DELETE_MSG: // Deleta um arquivo do servidor
             processFileDeleteMsg(buffer);
+            break;
+        case FILE_DOWNLOAD_MSG: // Envia um arquivo para o cliente por demanda
+            processFileDownloadMsg(buffer);
+            break;
         case STOP_MSG: // Para a thread
             shouldStop = true;
             break;
@@ -59,7 +75,7 @@ void *UserManager::execute(void *dummy)
         }
 
         delete[] buffer;
-    } while (!shouldStop && (fileReaders.size() + fileWriters.size() > 0));
+    } while (!shouldStop || (fileReaders.size() + fileWriters.size() > 0));
 
     return NULL;
 }
@@ -112,6 +128,7 @@ void UserManager::processSyncAllMsg(const char *buffer)
 {
     SyncAllMsg msg;
     msg.decode(buffer);
+    std::cout << "Syncing all files: User: " << username << "; Client: " << msg.clientId << std::endl;
     readAllFiles(msg.clientId);
 }
 
@@ -134,28 +151,28 @@ void UserManager::processFileWriteMsg(const char *buffer)
     {
         files.push_back(msg.filename);
     }
-    if (fileWriters.find(msg.fileHandlerId) == fileWriters.end()) // Caso o arquivo ainda não esteja sendo escrito
+    if (fileWriters.find(msg.clientId) == fileWriters.end()) // Caso o arquivo ainda não esteja sendo escrito
     {
         writer = new FileWriter(username, msg.clientId, fileMutexes.getOrAddMutex(msg.filename), msg.filename, socketServer.getPort());
-        fileWriters[msg.fileHandlerId] = writer;
+        fileWriters[msg.clientId] = writer;
         writer->start();
         SocketServerSession *newSession = new SocketServerSession(socketServer.listenAndAccept());
-        fileWriterSessions[msg.fileHandlerId] = newSession;
+        fileWriterSessions[msg.clientId] = newSession;
         newSession->write(buffer);
     }
     else // Caso o arquivo já esteja sendo escrito
     {
-        SocketServerSession *session = fileWriterSessions[msg.fileHandlerId];
+        SocketServerSession *session = fileWriterSessions[msg.clientId];
         session->write(buffer);
         if (msg.size == 0)
         {
-            writer = fileWriters[msg.fileHandlerId];
+            writer = fileWriters[msg.clientId];
             writer->join();
-            fileWriters.erase(msg.fileHandlerId);
+            fileWriters.erase(msg.clientId);
             delete writer;
 
             session->close();
-            fileWriterSessions.erase(msg.fileHandlerId);
+            fileWriterSessions.erase(msg.clientId);
             delete session;
         }
     }
@@ -173,8 +190,27 @@ void UserManager::processFileDeleteMsg(const char *buffer)
 {
     FileHandlerMessage msg;
     msg.decode(buffer);
+
+    for (auto &client : clientManagerSockets) // Encaminha modificação para todos os clientes - exceto o que enviou a mensagem
+    {
+        if (client.first != msg.clientId)
+        {
+            client.second->write(buffer);
+        }
+    }
+
     FileDeleter deleter(username, msg.clientId, fileMutexes.getOrAddMutex(msg.filename), msg.filename);
     deleter.start();
+    deleter.join();
+}
+
+void UserManager::processFileDownloadMsg(const char *buffer)
+{
+    FileHandlerMessage msg;
+    msg.decode(buffer);
+    std::string filename = filenameFromPath(msg.filename);
+    FileReader *reader = new FileReader(username, msg.clientId, fileMutexes.getOrAddMutex(filename), msg.filename, &socketClient);
+    reader->start();
 }
 
 void UserManager::stop()

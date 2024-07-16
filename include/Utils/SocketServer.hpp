@@ -5,7 +5,7 @@
 #include <netinet/in.h>
 #include <tuple>
 
-#define SOCKET_BUFFER_SIZE 8096
+#define SOCKET_BUFFER_SIZE 4096
 
 typedef int socket_t;
 

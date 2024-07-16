@@ -5,6 +5,6 @@
 class FileReader : public FileHandler
 {
 public:
-    FileReader(const std::string user, const unsigned int clientId, Mutex* mutex, const std::string filename, SocketClient* socketclient);
+    FileReader(const std::string user, const unsigned long long clientId, Mutex* mutex, const std::string filename, SocketClient* socketclient, std::string customPath = "");
     ~FileReader(){};
 };

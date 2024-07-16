@@ -38,7 +38,23 @@ void *ServerDaemon::execute(void *dummy)
             std::cerr << "Unknown message received: " << +buffer[0] << std::endl;
             break;
         }
-    } while (!shouldStop && (userManagers.size() > 0));
+    } while (!shouldStop || (userManagers.size() > 0));
+
+    for (auto &clientManagers : clientManagers)
+    {
+        for (auto &clientManager : clientManagers.second)
+        {
+            clientManager.second->stop();
+            delete clientManager.second;
+        }
+    }
+    
+    for (auto &user : userManagers)
+    {
+        user.second->stopGraciously();
+        user.second->join();
+        delete user.second;
+    }
 
     return NULL;
 }
@@ -53,7 +69,7 @@ void ServerDaemon::processClientConnectedMsg(const char *buffer)
     {
         RejectConnectMsg rejectMsg("User already has the maximum number of clients connected");
         char *buffer = rejectMsg.encode();
-        socketClient.write(buffer);
+        msg.clientSocket->write(buffer);
         delete[] buffer;
     }
     else if (shouldStop)
@@ -73,8 +89,8 @@ void ServerDaemon::processClientConnectedMsg(const char *buffer)
             userManagerSocket->connect();
         }
 
-        ClientManager *clientManager = new ClientManager(username, clientManagers.size()+1, msg.clientSocket, userManagers[username]->getSocketClient(), &socketClient);
-        clientManagers[username][clientManagers.size()+1] = clientManager;
+        ClientManager *clientManager = new ClientManager(username, clientManagers[username].size()+1, msg.clientSocket, userManagers[username]->getSocketClient(), &socketClient);
+        clientManagers[username][clientManagers[username].size()+1] = clientManager;
         clientManager->start();
     }
 }
@@ -92,17 +108,19 @@ void ServerDaemon::processClientDisconnectedMsg(const char *buffer)
     }
     else
     {
-        clientManagers[username][clientId]->join();
-        delete clientManagers[username][clientId];
+        ClientManager* toDelete = clientManagers[username][clientId];
+        toDelete->join();
         clientManagers[username].erase(clientId);
+        delete toDelete;
     }
 
     if (clientManagers[username].size() == 0)
     {
-        userManagers[username]->stopGraciously();
-        userManagers[username]->join();
-        delete userManagers[username];
+        UserManager* toDelete = userManagers[username];
+        toDelete->stopGraciously();
+        toDelete->join();
         userManagers.erase(username);
+        delete toDelete;
     }
 }
 

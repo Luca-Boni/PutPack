@@ -14,12 +14,12 @@ void *ConnectionManager::execute(void *dummy)
     while (true) // Thread é parada via stop()
     {
         // Recebe a conexão do cliente, lê a primeira mensagem e encaminha para o ServerDaemon
-        SocketServerSession socket = SocketServerSession(socketServer.listenAndAccept());
+        SocketServerSession *socket = new SocketServerSession(socketServer.listenAndAccept());
 
-        char* buffer = socket.read();        
+        char* buffer = socket->read();
         ClientConnectedMsg msg;
         msg.decode(buffer);
-        msg.clientSocket = &socket;
+        msg.clientSocket = socket;
         serverDaemonClientSocket->write(msg.encode());
         delete[] buffer;
     }
