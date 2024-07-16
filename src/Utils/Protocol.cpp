@@ -94,3 +94,31 @@ void EndClientMsg::decode(const char* buffer)
     clientId = *((unsigned long long*)(buffer + 1));
     strcpy(username, buffer + 1 + sizeof(unsigned long long));
 }
+
+char *ListServerCommandMsg::encode()
+{
+    char* buffer = new char[SOCKET_BUFFER_SIZE]();
+    int offset = 0;
+
+    buffer[offset] = LIST_SERVER_FILES_MSG;
+    offset += 1;
+
+    memcpy(buffer + offset, &clientId, sizeof(unsigned long long));
+    offset += sizeof(unsigned long long);
+
+    char cutData[SOCKET_BUFFER_SIZE - 2];
+    strcpy(cutData, data.substr(0, SOCKET_BUFFER_SIZE - 2).c_str());
+    strcpy(buffer + offset, cutData);
+
+    return buffer;
+}
+
+void ListServerCommandMsg::decode(const char* buffer)
+{
+    char cutData[SOCKET_BUFFER_SIZE] = {0};
+
+    clientId = *(unsigned long long*)(buffer + 1);
+
+    memcpy(cutData, (buffer + 1 + sizeof(unsigned long long)), SOCKET_BUFFER_SIZE - 2);
+    data = std::string(cutData);
+}

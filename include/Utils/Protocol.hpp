@@ -92,7 +92,8 @@ struct EndClientMsg
 class ListServerCommandMsg : public InterfaceCommandMsg
 {
 public:
-    std::vector<std::string> a;
+    unsigned long long clientId;
+    std::string data;
 
     ListServerCommandMsg() : InterfaceCommandMsg(InterfaceCommand::LIST_SERVER) {}
     char *encode();

@@ -49,6 +49,7 @@ private:
     void processFileUploadMsg(const char *buffer);
 
     void processInterfaceCommand(const char *buffer);
+    void processListServerFilesMsg(const char* buffer);
 
     void uploadFile(const std::string &filepath);
     void downloadFile(const std::string filename);

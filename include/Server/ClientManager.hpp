@@ -28,6 +28,7 @@ private:
     void processFileUploadMsg(char *buffer);
     void processFileDownloadMsg(const char *buffer);
     void processFileDelCmdMsg(const char *buffer);
+    void processListServerFilesMsg(const char *buffer);
 
 public:
     ClientManager(const std::string username, const unsigned long long clientId, SocketServerSession *socket, SocketClient *userManagerSocket, SocketClient *serverDaemonSocket);

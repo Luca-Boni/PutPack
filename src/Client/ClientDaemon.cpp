@@ -91,6 +91,8 @@ void *ClientDaemon::execute(void *dummy)
         case FILE_UPLOAD_MSG: // Arquivo enviado para o servidor -> deve sincronizar em todos os clientes
             processFileUploadMsg(buffer);
             break;
+        case LIST_SERVER_FILES_MSG:
+            processListServerFilesMsg(buffer);
         case SERVER_DEAD:
             std::cerr << "Server was stopped." << std::endl;
             shouldStop = true;
@@ -184,7 +186,7 @@ void ClientDaemon::processFileMonitorMsg(const char *buffer)
         deleter.start();
         deleter.join();
         fileMonitor->enableFile(filename);
-        
+
         FileHandlerMessage msg(0, filename.c_str(), 0, NULL);
         char *buffer = msg.encode();
         buffer[0] = FILE_DELETE_MSG;
@@ -402,7 +404,7 @@ void ClientDaemon::uploadFile(const std::string &path)
     std::cout << "Path: " << path << std::endl;
     std::string filepath = std::string(path);
     FileReader *fileReader = new FileReader(username, 0, fileMutexes.getOrAddMutex(filename), filename, &socketClient, filepath);
-    
+
     // fileReaders[filename] = fileReader;
     fileReader->start();
 }
@@ -420,4 +422,11 @@ void ClientDaemon::synchronize()
     char *buffer = msg.encode();
     serverSocket->write(buffer);
     delete[] buffer;
+}
+
+void ClientDaemon::processListServerFilesMsg(const char *buffer)
+{
+    ListServerCommandMsg msg;
+    msg.decode(buffer);
+    std::cout << msg.data << std::endl;
 }

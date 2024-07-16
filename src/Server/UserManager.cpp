@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <iostream>
 #include <filesystem>
+#include <sys/stat.h>
 
 UserManager::UserManager(const std::string username) : Thread(std::bind(&UserManager::execute, this, std::placeholders::_1), NULL),
                                                        username(username),
@@ -40,8 +41,6 @@ void *UserManager::execute(void *dummy)
     do
     {
         char *buffer = socket.read();
-        if (+buffer[0] != FILE_WRITE_MSG && +buffer[0] != FILE_READ_MSG)
-            std::cout << "UM Received message: " << +buffer[0] << std::endl;
 
         switch (buffer[0])
         {
@@ -66,6 +65,8 @@ void *UserManager::execute(void *dummy)
         case FILE_DOWNLOAD_MSG: // Envia um arquivo para o cliente por demanda
             processFileDownloadMsg(buffer);
             break;
+        case LIST_SERVER_FILES_MSG:
+            processListServerFilesMsg(buffer);
         case STOP_MSG: // Para a thread
             shouldStop = true;
             break;
@@ -242,4 +243,51 @@ void UserManager::stopGraciously()
     buffer[0] = STOP_MSG;
     socketClient.write(buffer);
     delete[] buffer;
+}
+
+std::string getFileAndMACTimes(const std::filesystem::path &filepath)
+{
+    struct stat fileStat;
+    stat(filepath.c_str(), &fileStat);
+    struct tm *mtimeinfo = localtime(&fileStat.st_mtime);
+    struct tm *atimeinfo = localtime(&fileStat.st_atime);
+    struct tm *ctimeinfo = localtime(&fileStat.st_ctime);
+
+    char mtime[80];
+    char atime[80];
+    char ctime[80];
+
+    strftime(mtime, 80, "%d-%m-%Y %H:%M:%S", mtimeinfo);
+    strftime(atime, 80, "%d-%m-%Y %H:%M:%S", atimeinfo);
+    strftime(ctime, 80, "%d-%m-%Y %H:%M:%S", ctimeinfo);
+
+    std::string out = "";
+
+    out + "Filename: " + filepath.filename().string() + "\n";
+    out + "    Last modified: " + mtime + "\n";
+    out + "    Last accessed: " + atime + "\n";
+    out + "          Created: " + ctime + "\n";
+
+    return out;
+}
+
+void UserManager::processListServerFilesMsg(const char* buffer)
+{
+    ListServerCommandMsg msg;
+    msg.decode(buffer);
+    std::string filesInfo = "";
+
+    char path[FILENAME_MAX];
+    ssize_t count = readlink("/proc/self/exe", path, FILENAME_MAX);
+    std::string exe_dir = std::filesystem::path(std::string(path, (count > 0) ? count : 0)).parent_path().string();
+
+    for (const auto &file : std::filesystem::directory_iterator(exe_dir + "/sync_dir_" + username + "/"))
+    {
+        filesInfo += getFileAndMACTimes(file.path());
+    }
+
+    msg.data = filesInfo;
+    char *newbuffer = msg.encode();
+    clientManagerSockets[msg.clientId]->write(newbuffer);
+    delete[] newbuffer;
 }

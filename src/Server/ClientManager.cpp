@@ -24,7 +24,6 @@ void *ClientManager::execute(void *dummy)
     while (!shouldStop || (filesBeingEdited.size() > 0))
     {
         char *buffer = socket->read();
-        std::cout << "CM" << clientId << "Received message: " << +buffer[0] << std::endl;
 
         switch (buffer[0])
         {
@@ -43,12 +42,14 @@ void *ClientManager::execute(void *dummy)
         case FILE_UPLOAD_MSG: // Envia um arquivo para o servidor -> deve sincronizar em todos os clientes
             processFileUploadMsg(buffer);
             break;
-        case FILE_DOWNLOAD_MSG:// Envia um arquivo para o cliente por demanda
+        case FILE_DOWNLOAD_MSG: // Envia um arquivo para o cliente por demanda
             processFileDownloadMsg(buffer);
             break;
         case FILE_DEL_CMD_MSG: // Envia um comando para deletar um arquivo
             processFileDelCmdMsg(buffer);
             break;
+        case LIST_SERVER_FILES_MSG:
+            processListServerFilesMsg(buffer);
         default:
             std::cerr << "Unknown message received: " << +buffer[0] << std::endl;
             break;
@@ -127,7 +128,7 @@ void ClientManager::processFileUploadMsg(char *buffer)
     {
         filesBeingEdited.insert(msg.filename);
     }
-    
+
     buffer[0] = FILE_WRITE_MSG;
     userManagerSocket->write(buffer); // Não identificamos o ClientManager, dessa forma atualiza para todos
 }
@@ -136,7 +137,7 @@ void ClientManager::processFileDelCmdMsg(const char *buffer)
 {
     FileHandlerMessage msg;
     msg.decode(buffer);
-    msg.clientId = 0;   // Comando de deletar arquivo não tem clientId -> deleta para todos clientes
+    msg.clientId = 0; // Comando de deletar arquivo não tem clientId -> deleta para todos clientes
     char *newBuffer = msg.encode();
     newBuffer[0] = FILE_DELETE_MSG;
     userManagerSocket->write(newBuffer);
@@ -150,6 +151,16 @@ void ClientManager::processFileDownloadMsg(const char *buffer)
     msg.clientId = clientId;
     char *newBuffer = msg.encode();
     newBuffer[0] = FILE_DOWNLOAD_MSG;
+    userManagerSocket->write(newBuffer);
+    delete[] newBuffer;
+}
+
+void ClientManager::processListServerFilesMsg(const char *buffer)
+{
+    ListServerCommandMsg msg;
+    msg.decode(buffer);
+    msg.clientId = clientId;
+    char* newBuffer = msg.encode();
     userManagerSocket->write(newBuffer);
     delete[] newBuffer;
 }
