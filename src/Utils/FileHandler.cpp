@@ -13,7 +13,7 @@ std::string getFileFolder(std::string username)
 {
     char path[FILENAME_MAX];
     ssize_t count = readlink("/proc/self/exe", path, FILENAME_MAX);
-    std::string exe_dir = std::filesystem::path(std::string(path, (count > 0) ? count : 0)).parent_path().string();
+    std::string exe_dir = std::filesystem::path(std::string(path)).parent_path().string();
     return exe_dir + "/sync_dir_" + username + "/";
 }
 
@@ -62,9 +62,11 @@ void *FileHandler::execute(void *dummy)
 void FileHandler::readFile()
 {
     bool isUpload = !(customPath.empty());
-    bool isDownload = filename.find("./") == 0;
+    bool isDownload = (filename.find("./") == 0);
 
-    std::string fullFilename = getFileFolder(user) + filename;
+    std::cout << customPath << std::endl;
+
+    std::string fullFilename;
     if (isDownload)
     {
         fullFilename = getFileFolder(user) + filenameFromPath(filename);
@@ -72,6 +74,10 @@ void FileHandler::readFile()
     else if (isUpload)
     {
         fullFilename = customPath;
+    }
+    else
+    {
+        fullFilename = getFileFolder(user) + filename;
     }
 
     file = std::fstream(fullFilename, std::fstream::in | std::fstream::binary);
@@ -114,8 +120,8 @@ void FileHandler::readFile()
 
 void FileHandler::writeFile()
 {
-    bool isDownload = filename.find("./") == 0;
-    std::string filename = isDownload ? filename : getFileFolder(user) + this->filename;
+    bool isDownload = (filename.find("./") == 0);
+    std::string filename = isDownload ? this->filename : getFileFolder(user) + this->filename;
 
     file = std::fstream(filename, std::fstream::out | std::fstream::binary | std::fstream::trunc);
     int size;

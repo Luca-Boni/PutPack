@@ -51,7 +51,7 @@ private:
     void processInterfaceCommand(const char *buffer);
 
     void uploadFile(const std::string &filepath);
-    void downloadFile(const std::string &filename);
+    void downloadFile(const std::string filename);
     void deleteFile(const std::string &filename);
     void listServerFiles();
     void listClientFiles();

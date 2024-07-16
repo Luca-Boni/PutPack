@@ -60,11 +60,6 @@ void *ClientDaemon::execute(void *dummy)
 
     fileMonitor->start();
 
-    // SyncAllMsg syncMsg = SyncAllMsg();
-    // buffer = syncMsg.encode();
-    // serverSocket->write(buffer);
-    // delete[] buffer;
-
     while (!shouldStop || (filesBeingRead.size() > 0))
     {
         char *buffer = socketSession.read();
@@ -229,12 +224,18 @@ void ClientDaemon::processFileWriteMsg(const char *buffer)
         writer->start();
         SocketServerSession *newSession = new SocketServerSession(socket.listenAndAccept());
         fileWriterSessions[msg.filename] = newSession;
-        newSession->write(buffer);
+
+        char *newBuffer = msg.encode();
+        newSession->write(newBuffer);
+        delete[] newBuffer;
     }
     else // Caso o arquivo já esteja sendo escrito
     {
         SocketServerSession *session = fileWriterSessions[msg.filename];
-        session->write(buffer);
+        char *newBuffer = msg.encode();
+        session->write(newBuffer);
+        delete[] newBuffer;
+
         if (msg.size == 0)
         {
             FileWriter *writer = fileWriters[msg.filename];
@@ -384,7 +385,7 @@ void ClientDaemon::listServerFiles()
     delete[] buffer;
 }
 
-void ClientDaemon::downloadFile(const std::string &filename)
+void ClientDaemon::downloadFile(const std::string filename)
 {
     std::string fullFilename = "./" + filename;
     FileHandlerMessage msg(0, fullFilename.c_str(), 0, NULL);
@@ -400,8 +401,10 @@ void ClientDaemon::uploadFile(const std::string &path)
     std::cout << "Uploading file: " << filename << std::endl;
     std::cout << "Path: " << path << std::endl;
     std::string filepath = std::string(path);
-    FileReader fileReader = FileReader(username, 0, fileMutexes.getOrAddMutex(filename), filename, &socketClient, filepath);
-    fileReader.start();
+    FileReader *fileReader = new FileReader(username, 0, fileMutexes.getOrAddMutex(filename), filename, &socketClient, filepath);
+    
+    // fileReaders[filename] = fileReader;
+    fileReader->start();
 }
 
 void ClientDaemon::deleteFile(const std::string &filename)

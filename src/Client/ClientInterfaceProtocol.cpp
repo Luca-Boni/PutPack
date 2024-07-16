@@ -41,11 +41,16 @@ char *FileChangeCommandMsg::encode()
 
 void FileChangeCommandMsg::decode(const char *buffer)
 {
-    InterfaceCommandMsg::decode(buffer);
+    command = static_cast<InterfaceCommand>(buffer[1]);
+
     int offset = 2 * sizeof(unsigned char);
 
-    filename = std::string(buffer + offset, FILENAME_SIZE);
+    char cutFilename[FILENAME_SIZE] = {0};
+    strcpy(cutFilename, buffer + offset);
+    filename = std::string(cutFilename);
     offset += FILENAME_SIZE;
 
-    path = std::string(buffer + offset);
+    char cpath[SOCKET_BUFFER_SIZE - offset] = {0};
+    strcpy(cpath, buffer + offset);
+    path = std::string(cpath);
 }
