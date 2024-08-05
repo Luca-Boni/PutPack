@@ -1,4 +1,5 @@
 #include "Client/FileMonitor.hpp"
+#include "Utils/Logger.hpp"
 #include <iostream>
 #include <sys/stat.h>
 
@@ -16,6 +17,7 @@ FileMonitor::FileMonitor(const std::string monitoredFolder, SocketClient *socket
     this->monitoredFolder = monitoredFolder;
     shouldStop = false;
     disabledFiles = std::unordered_set<std::string>();
+    Logger::log("FileMonitor created for folder " + monitoredFolder);
 }
 
 FileMonitor::~FileMonitor()
@@ -28,11 +30,11 @@ void *FileMonitor::execute(void *dummy)
     socket->connect();
     fd = inotify_init();
     if (fd < 0)
-        std::cerr << "Error initializing inotify" << std::endl;
+        Logger::log("Error initializing inotify");
 
     int wd = inotify_add_watch(fd, monitoredFolder.c_str(), IN_FILE_CHANGE | IN_FILE_REMOVE);
     if (wd == -1)
-        std::cerr << "Error adding watch to file" << std::endl;
+        Logger::log("Error adding watch to folder " + monitoredFolder);
     else
         watchedFolder = wd;
 
@@ -42,7 +44,7 @@ void *FileMonitor::execute(void *dummy)
         length = read(fd, buffer, EVENT_BUF_LEN);
 
         if (length < 0)
-            std::cerr << "Error while reading file monitor event" << std::endl;
+            Logger::log("Error while reading file monitor event: Error code " + std::to_string(length));
 
         int i = 0;
         char *msg_buffer;
@@ -67,11 +69,11 @@ void *FileMonitor::execute(void *dummy)
                         {
                             if (disabledFiles.find(event->name) != disabledFiles.end())
                             {
-                                // std::cout << "File " << event->name << " is disabled." << std::endl;
+                                Logger::log("File " + std::string(event->name) + " was changed, but monitoring is disabled.");
                             }
                             else
                             {
-                                // std::cout << "File " << event->name << " modified." << std::endl;
+                                Logger::log("File " + std::string(event->name) + " was changed.");
                                 FileMonitorMsg msg(FileMonitorProtocol::FMP_FILE_CHANGE, event->name);
                                 msg_buffer = msg.encode();
                                 socket->write(msg_buffer);
@@ -93,11 +95,11 @@ void *FileMonitor::execute(void *dummy)
                         {
                             if (disabledFiles.find(event->name) != disabledFiles.end())
                             {
-                                // std::cout << "File " << event->name << " is disabled." << std::endl;
+                                Logger::log("File " + std::string(event->name) + " was deleted, but monitoring is disabled.");
                             }
                             else
                             {
-                                // std::cout << "File " << event->name << " deleted." << std::endl;
+                                Logger::log("File " + std::string(event->name) + " was deleted.");
                                 FileMonitorMsg msg(FileMonitorProtocol::FMP_FILE_REMOVE, event->name);
                                 msg_buffer = msg.encode();
                                 socket->write(msg_buffer);

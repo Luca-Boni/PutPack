@@ -20,10 +20,12 @@ UserManager::UserManager(const std::string username) : Thread(std::bind(&UserMan
     fileReaders = std::unordered_map<unsigned long long, FileReader *>();
     fileWriters = std::unordered_map<unsigned long long, FileWriter *>();
     fileWriterSessions = std::unordered_map<unsigned long long, SocketServerSession *>();
+    Logger::log("UserManager created: " + username);
 }
 
 void *UserManager::execute(void *dummy)
 {
+    Logger::log("UserManager started: " + username);
     socket = SocketServerSession(socketServer.listenAndAccept());
 
     char path[FILENAME_MAX];
@@ -71,13 +73,14 @@ void *UserManager::execute(void *dummy)
             shouldStop = true;
             break;
         default:
-            std::cerr << "Unknown message received: " << +buffer[0] << std::endl;
+            Logger::log("Unknown message received: " + username + std::to_string(+buffer[0]));
             break;
         }
 
         delete[] buffer;
     } while (!shouldStop || (fileReaders.size() + fileWriters.size() > 0));
 
+    Logger::log("UserManager stopped: " + username);
     return NULL;
 }
 
@@ -95,9 +98,10 @@ void UserManager::processNewClientMsg(const char *buffer)
 {
     NewClientMsg msg;
     msg.decode(buffer);
+    Logger::log("New client connected: " + username + std::to_string(msg.clientId));
     if (clientManagerSockets.find(msg.clientId) != clientManagerSockets.end())
     {
-        std::cerr << "Client already exists" << std::endl;
+        Logger::log("Client already exists: " + username + std::to_string(msg.clientId));
     }
     else
     {
@@ -110,9 +114,10 @@ void UserManager::processEndClientMsg(const char *buffer)
 {
     EndClientMsg msg;
     msg.decode(buffer);
+    Logger::log("UserManager: Client disconnected: " + username + " " + std::to_string(msg.clientId));
     if (clientManagerSockets.find(msg.clientId) == clientManagerSockets.end())
     {
-        std::cerr << "Client does not exist" << std::endl;
+        Logger::log("Client does not exist: " + username + std::to_string(msg.clientId));
     }
     else
     {
@@ -129,7 +134,7 @@ void UserManager::processSyncAllMsg(const char *buffer)
 {
     SyncAllMsg msg;
     msg.decode(buffer);
-    std::cout << "Syncing all files: User: " << username << "; Client: " << msg.clientId << std::endl;
+    Logger::log("Syncing all files: " + username + std::to_string(msg.clientId));
     readAllFiles(msg.clientId);
 }
 
@@ -137,6 +142,7 @@ void UserManager::processFileWriteMsg(const char *buffer)
 {
     struct FileHandlerMessage msg;
     msg.decode(buffer);
+    Logger::log("Writing to file: " + username + " " + std::to_string(msg.clientId) + " " + msg.filename + " " + std::to_string(msg.size) + " bytes");
 
     for (auto &client : clientManagerSockets) // Encaminha modificação para todos os clientes - exceto o que enviou a mensagem
     {
@@ -183,6 +189,7 @@ void UserManager::processFileReadMsg(const char *buffer)
 {
     struct FileHandlerMessage msg;
     msg.decode(buffer);
+    Logger::log("Reading file: " + username + " " + std::to_string(msg.clientId) + " " + msg.filename);
     SocketServerSession *clientManagerSocket = clientManagerSockets[msg.clientId];
     clientManagerSocket->write(buffer);
 }
@@ -191,6 +198,7 @@ void UserManager::processFileDeleteMsg(const char *buffer)
 {
     FileHandlerMessage msg;
     msg.decode(buffer);
+    Logger::log("Deleting file: " + username + " " + std::to_string(msg.clientId) + " " + msg.filename);
 
     for (auto &client : clientManagerSockets) // Encaminha modificação para todos os clientes - exceto o que enviou a mensagem
     {
@@ -210,6 +218,7 @@ void UserManager::processFileDownloadMsg(const char *buffer)
     FileHandlerMessage msg;
     msg.decode(buffer);
     std::string filename = filenameFromPath(msg.filename);
+    Logger::log("Sending file as download: " + username + " " + std::to_string(msg.clientId) + " " + filename);
     FileReader *reader = new FileReader(username, msg.clientId, fileMutexes.getOrAddMutex(filename), msg.filename, &socketClient);
     reader->start();
 }
@@ -275,6 +284,7 @@ void UserManager::processListServerFilesMsg(const char* buffer)
 {
     ListServerCommandMsg msg;
     msg.decode(buffer);
+    Logger::log("Listing server files: " + username + " " + std::to_string(msg.clientId));
     std::string filesInfo = "";
 
     char path[FILENAME_MAX];

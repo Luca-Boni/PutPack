@@ -1,11 +1,13 @@
 #include "Server/ServerDaemon.hpp"
 #include "Server/ConnectionManager.hpp"
+#include "Utils/Logger.hpp"
 
 #include <iostream>
 #include <signal.h>
 
 ServerDaemon *serverDaemonPtr = NULL;
 ConnectionManager *connectionManagerPtr = NULL;
+Logger *loggerPtr = NULL;
 
 void ctrlCHandler(sig_atomic_t s)
 {
@@ -13,7 +15,9 @@ void ctrlCHandler(sig_atomic_t s)
         connectionManagerPtr->stop();
     if (serverDaemonPtr)
         serverDaemonPtr->stop();
-    std::cout << "Server stopped." << std::endl;
+    if (loggerPtr)
+        loggerPtr->stop();
+    std::cout << "Server stopped forcefully." << std::endl;
     exit(2);
 }
 
@@ -32,6 +36,8 @@ int main(int argc, char *argv[])
 
     if (argc <= 2)
     {
+        Logger logger = Logger("PutPackServer");
+
         ServerDaemon serverDaemon = ServerDaemon();
         serverDaemon.start();
         SocketClient *serverDaemonClientSocket = serverDaemon.getSocketClient();
@@ -42,11 +48,14 @@ int main(int argc, char *argv[])
         
         serverDaemonPtr = &serverDaemon;
         connectionManagerPtr = &connectionManager;
+        loggerPtr = &logger;
         signal(SIGINT, ctrlCHandler);        
 
         std::cout << "Server started on port " << connectionManager.getPort() << std::endl
                   << "Type 'exit' to stop the server." << std::endl
                   << "[NOT RECOMMENDED] Ctrl+C will kill the server immediately." << std::endl;
+
+        Logger::log("Server started on port " + std::to_string(connectionManager.getPort()));
 
         std::string command;
         while (command != "exit")

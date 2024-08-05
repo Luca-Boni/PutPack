@@ -19,4 +19,5 @@ public:
     ConnectionManager(int port, SocketClient *serverDaemonClientSocket);
     ~ConnectionManager(){};
     int getPort() { return socketServer.getPort(); };
+    void stop();
 };

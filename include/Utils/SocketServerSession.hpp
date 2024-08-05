@@ -3,6 +3,8 @@
 #include "Utils/Mutex.hpp"
 #include "Utils/SocketServer.hpp"
 
+#include <arpa/inet.h>
+#include <string>
 #include <tuple>
 
 class SocketServerSession
@@ -20,4 +22,7 @@ public:
     void write(const char* buffer);
     char* read();
     void close();
+
+    std::string getClientIP() { return std::string(inet_ntoa(clientAddress.sin_addr)); }
+    int getClientPort() { return clientAddress.sin_port; }
 };

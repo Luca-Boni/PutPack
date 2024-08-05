@@ -1,6 +1,7 @@
 #include "Client/ClientDaemon.hpp"
 #include "Client/ServerReceiver.hpp"
 #include "Client/ClientMenu.hpp"
+#include "Utils/Logger.hpp"
 
 #include <iostream>
 
@@ -12,6 +13,8 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    Logger logger = Logger("PutPackClient");
+    
     std::string username = argv[1];
     std::string serverAddress = argv[2];
     int serverPort = atoi(argv[3]);
@@ -34,6 +37,8 @@ int main(int argc, char *argv[])
 
     serverReceiver.stop();
     clientDaemon.join();
+
+    std::cout << "Client stopped sucessfully." << std::endl;
 
     return 0;
 }

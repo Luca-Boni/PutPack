@@ -1,6 +1,7 @@
 #include "Utils/FileHandler.hpp"
 #include "Utils/FileHandlerProtocol.hpp"
 #include "Utils/Protocol.hpp"
+#include "Utils/Logger.hpp"
 #include <fstream>
 #include <iostream>
 #include <cstring>
@@ -52,19 +53,19 @@ void *FileHandler::execute(void *dummy)
         deleteFile();
         break;
     default:
-        std::cerr << "Unknown mode" << std::endl;
+        Logger::log("Tried to create FileHandler with unknown mode " + std::to_string(static_cast<int>(mode)));
         break;
     }
+    Logger::log("FileHandler finished: " + filename + " " + user + " " + std::to_string(clientId) + "; FileHandler id: " + std::to_string(id));
     mutex->unlock();
     return NULL;
 }
 
 void FileHandler::readFile()
 {
+    Logger::log("Reading file: " + filename + " " + user + " " + std::to_string(clientId) + "; FileHandler id: " + std::to_string(id));
     bool isUpload = !(customPath.empty());
     bool isDownload = (filename.find("./") == 0);
-
-    std::cout << customPath << std::endl;
 
     std::string fullFilename;
     if (isDownload)
@@ -84,7 +85,7 @@ void FileHandler::readFile()
 
     if (!file.is_open())
     {
-        std::cerr << "Error opening file '" << fullFilename << "'." << std::endl;
+        Logger::log("Error opening file '" + fullFilename + "'; FileHandler id: " + std::to_string(id));
         return;
     }
 
@@ -120,6 +121,7 @@ void FileHandler::readFile()
 
 void FileHandler::writeFile()
 {
+    Logger::log("Writing file: " + filename + " " + user + " " + std::to_string(clientId) + "; FileHandler id: " + std::to_string(id));
     bool isDownload = (filename.find("./") == 0);
     std::string filename = isDownload ? this->filename : getFileFolder(user) + this->filename;
 
@@ -128,7 +130,7 @@ void FileHandler::writeFile()
 
     if (!file.is_open())
     {
-        std::cerr << "Error opening file '" << filename << "'." << std::endl;
+        Logger::log("Error opening file '" + filename + "'; FileHandler id: " + std::to_string(id));
         return;
     }
     else
@@ -149,6 +151,7 @@ void FileHandler::writeFile()
 
 void FileHandler::deleteFile()
 {
+    Logger::log("Deleting file: " + filename + " " + user + " " + std::to_string(clientId) + "; FileHandler id: " + std::to_string(id));
     std::remove((getFileFolder(user) + filename).c_str());
 }
 

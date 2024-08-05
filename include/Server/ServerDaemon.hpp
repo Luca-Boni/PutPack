@@ -6,6 +6,7 @@
 #include "Utils/SocketClient.hpp"
 #include "Server/ClientManager.hpp"
 #include "Server/UserManager.hpp"
+#include "Utils/Logger.hpp"
 
 #include <string>
 #include <vector>
@@ -24,7 +25,6 @@ private:
 
     void *execute(void *dummy);
     void processClientConnectedMsg(const char *buffer);
-    void processNewClientMsg(const char *buffer);
     void processClientDisconnectedMsg(const char *buffer);
 
 public:

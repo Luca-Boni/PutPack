@@ -1,4 +1,5 @@
 #include "Server/ConnectionManager.hpp"
+#include "Utils/Logger.hpp"
 
 #include <iostream>
 
@@ -11,6 +12,7 @@ ConnectionManager::ConnectionManager(int port, SocketClient *serverDaemonClientS
 
 void *ConnectionManager::execute(void *dummy)
 {
+    Logger::log("ConnectionManager started");
     while (true) // Thread é parada via stop()
     {
         // Recebe a conexão do cliente, lê a primeira mensagem e encaminha para o ServerDaemon
@@ -23,4 +25,10 @@ void *ConnectionManager::execute(void *dummy)
         serverDaemonClientSocket->write(msg.encode());
         delete[] buffer;
     }
+}
+
+void ConnectionManager::stop()
+{
+    Thread::stop();
+    Logger::log("ConnectionManager stopped");
 }

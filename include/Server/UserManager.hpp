@@ -7,6 +7,7 @@
 #include "Utils/SocketServerSession.hpp"
 #include "Utils/FileWriter.hpp"
 #include "Utils/FileReader.hpp"
+#include "Utils/Logger.hpp"
 #include "Utils/Hash.hpp"
 #include <unordered_map>
 

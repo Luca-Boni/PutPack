@@ -3,6 +3,8 @@
 #include "Utils/Mutex.hpp"
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
+#include <string>
 
 #define SOCKET_BUFFER_SIZE 4096
 #define MAX_CONNECT_TRIES 100
@@ -37,4 +39,7 @@ public:
     void write(const char* buffer);
     char* read();
     void close();
+
+    std::string getServerIP() { return std::string(inet_ntoa(server_address.sin_addr)); }
+    int getServerPort() { return server_address.sin_port; }
 };

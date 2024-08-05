@@ -51,7 +51,7 @@ void *ClientManager::execute(void *dummy)
         case LIST_SERVER_FILES_MSG:
             processListServerFilesMsg(buffer);
         default:
-            std::cerr << "Unknown message received: " << +buffer[0] << std::endl;
+            Logger::log("Unknown message received: " + +buffer[0]);
             break;
         }
 
@@ -65,6 +65,7 @@ void ClientManager::processSyncAllMsg(const char *buffer)
 {
     SyncAllMsg msg;
     msg.decode(buffer);
+    Logger::log("Syncing all files: " + username + " " + std::to_string(clientId));
     msg.clientId = clientId;
     char *newBuffer = msg.encode();
     userManagerSocket->write(newBuffer);
@@ -75,6 +76,7 @@ void ClientManager::processFileDeleteMsg(const char *buffer)
 {
     FileHandlerMessage msg;
     msg.decode(buffer);
+    Logger::log("Deleting file: " + std::string(msg.filename) + " " + username + " " + std::to_string(clientId));
     msg.clientId = clientId;
     char *newBuffer = msg.encode();
     newBuffer[0] = FILE_DELETE_MSG;
@@ -86,6 +88,7 @@ void ClientManager::processFileWriteMsg(const char *buffer)
 {
     FileHandlerMessage msg;
     msg.decode(buffer);
+    Logger::log("Writing file: " + std::string(msg.filename) + " " + std::to_string(msg.size) + " bytes" + "; " + username + " " + std::to_string(clientId));
 
     if (msg.size == 0)
     {
@@ -107,6 +110,7 @@ void ClientManager::processEndClientMsg(const char *buffer)
 {
     EndClientMsg msg;
     msg.decode(buffer);
+    Logger::log("ClientManager: Client disconnected: " + username + " " + std::to_string(clientId));
     msg.clientId = clientId;
     char *newBuffer = msg.encode();
     userManagerSocket->write(newBuffer);
@@ -119,6 +123,7 @@ void ClientManager::processFileUploadMsg(char *buffer)
 {
     FileHandlerMessage msg;
     msg.decode(buffer);
+    Logger::log("Receiving uploaded file: " + std::string(msg.filename) + " " + std::to_string(msg.size) + " bytes" + "; " + username + " " + std::to_string(clientId));
 
     if (msg.size == 0)
     {
@@ -137,6 +142,7 @@ void ClientManager::processFileDelCmdMsg(const char *buffer)
 {
     FileHandlerMessage msg;
     msg.decode(buffer);
+    Logger::log("Deleting file: " + std::string(msg.filename) + "; " + username + " " + std::to_string(clientId));
     msg.clientId = 0; // Comando de deletar arquivo não tem clientId -> deleta para todos clientes
     char *newBuffer = msg.encode();
     newBuffer[0] = FILE_DELETE_MSG;
@@ -148,6 +154,7 @@ void ClientManager::processFileDownloadMsg(const char *buffer)
 {
     FileHandlerMessage msg;
     msg.decode(buffer);
+    Logger::log("Sending file as download: " + std::string(msg.filename) + "; " + username + " " + std::to_string(clientId));
     msg.clientId = clientId;
     char *newBuffer = msg.encode();
     newBuffer[0] = FILE_DOWNLOAD_MSG;
@@ -159,6 +166,7 @@ void ClientManager::processListServerFilesMsg(const char *buffer)
 {
     ListServerCommandMsg msg;
     msg.decode(buffer);
+    Logger::log("Listing server files: " + username + " " + std::to_string(clientId));
     msg.clientId = clientId;
     char* newBuffer = msg.encode();
     userManagerSocket->write(newBuffer);

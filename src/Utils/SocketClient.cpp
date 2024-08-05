@@ -1,4 +1,5 @@
 #include "Utils/SocketClient.hpp"
+#include "Utils/Logger.hpp"
 
 #include <iostream>
 #include <cstring>
@@ -19,13 +20,13 @@ SocketClient::SocketClient(const char *hostname, int port)
     client_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (client_fd == 0)
     {
-        std::cerr << "Error while creating socket." << std::endl;
+        Logger::log("Error while creating socket to connect to server " + std::string(hostname) + ":" + std::to_string(port));
     }
 
     server = gethostbyname(hostname);
     if (server == NULL)
     {
-        std::cerr << "Error while getting host." << std::endl;
+        Logger::log("Error while getting host " + std::string(hostname));
     }
 
     server_address.sin_family = AF_INET;
@@ -42,14 +43,14 @@ void SocketClient::connect()
         int tries = 0;
         while (tries < MAX_CONNECT_TRIES && ::connect(client_fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
         {
-            std::cerr << "Error while connecting to server. Trying again." << std::endl;
+            Logger::log("Error while connecting to server " + getServerIP() + ":" + std::to_string(getServerPort()) + ". Trying again.");
             tries++;
             nanosleep((const struct timespec[]){{0, (1000 * 1000 * 100)}}, NULL);
         }
         if (tries == MAX_CONNECT_TRIES)
         {
             this->errors |= SocketClientError::CANT_CONNECT;
-            std::cerr << "Max number of tries reached." << std::endl;
+            Logger::log("Max number of tries reached trying to connect to server " + getServerIP() + ":" + std::to_string(getServerPort()));
         }
         else
         {
@@ -66,7 +67,7 @@ void SocketClient::write(const char* buffer)
     if (size < 0)
     {
         this->errors |= SocketClientError::CANT_WRITE;
-        std::cerr << "Error while writing to socket." << std::endl;
+        Logger::log("Error while writing to socket on server " + getServerIP() + ":" + std::to_string(getServerPort()));
     }
     writeMutex.unlock();
 }
@@ -82,7 +83,7 @@ char* SocketClient::read()
         int read = 0;
         if ((read = ::read(client_fd, buffer + total_read, SOCKET_BUFFER_SIZE - total_read)) < 0)
         {
-            std::cerr << "Error while reading from socket." << std::endl;
+            Logger::log("Error while reading from socket of server " + getServerIP() + ":" + std::to_string(getServerPort()));
             break;
         }
         else

@@ -22,4 +22,6 @@ public:
     
     SocketClient *getServerSocket() { return &serverSocket; };
     void setClientSocket(SocketClient *clientSocket) { this->clientSocket = clientSocket; };
+
+    void stop();
 };

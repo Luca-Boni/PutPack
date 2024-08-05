@@ -4,6 +4,7 @@
 #include "Utils/FileHandlerProtocol.hpp"
 #include "Utils/FileDeleter.hpp"
 #include "Client/ClientInterfaceProtocol.hpp"
+#include "Utils/Logger.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -36,10 +37,12 @@ ClientDaemon::ClientDaemon(const std::string &username, SocketClient *serverSock
     syncDir = exe_dir + "/sync_dir_" + username + "/";
 
     fileMonitor = new FileMonitor(syncDir, &socketClient);
+    Logger::log("ClientDaemon created: " + username);
 }
 
 void *ClientDaemon::execute(void *dummy)
 {
+    Logger::log("ClientDaemon started");
     if (!std::filesystem::exists(syncDir))
     {
         std::filesystem::create_directory(syncDir);
@@ -63,8 +66,6 @@ void *ClientDaemon::execute(void *dummy)
     while (!shouldStop || (filesBeingRead.size() > 0))
     {
         char *buffer = socketSession.read();
-        if (+buffer[0] != FILE_WRITE_MSG && +buffer[0] != FILE_READ_MSG)
-            std::cout << "CD Received message: " << +buffer[0] << std::endl;
 
         switch ((unsigned char)buffer[0])
         {
@@ -94,11 +95,11 @@ void *ClientDaemon::execute(void *dummy)
         case LIST_SERVER_FILES_MSG:
             processListServerFilesMsg(buffer);
         case SERVER_DEAD:
-            std::cerr << "Server was stopped." << std::endl;
+            Logger::log("Server is dead.");
             shouldStop = true;
             break;
         default:
-            std::cerr << "Unknown message received: " << +buffer[0] << std::endl;
+            Logger::log("Unknown message received: " + std::to_string(+buffer[0]));
             break;
         }
 
@@ -108,7 +109,7 @@ void *ClientDaemon::execute(void *dummy)
     fileMonitor->stop();
 
     serverSocket->close();
-    std::cout << "ClientDaemon stopped." << std::endl;
+    Logger::log("ClientDaemon stopped.");
 
     return NULL;
 }
@@ -122,6 +123,7 @@ void ClientDaemon::endClient()
     delete[] buffer;
 
     shouldStop = true;
+    Logger::log("Waiting for files to stop updating...");
     std::cout << "Waiting for files to stop updating..." << std::endl;
 }
 
@@ -129,6 +131,7 @@ void ClientDaemon::processConnectionRejectedMsg(const char *buffer)
 {
     RejectConnectMsg msg = RejectConnectMsg();
     msg.decode(buffer);
+    Logger::log("Connection rejected: " + std::string(msg.message));
     std::cerr << "Connection rejected: " << msg.message << std::endl;
     exit(0);
 }
@@ -138,6 +141,7 @@ void ClientDaemon::processFileMonitorMsg(const char *buffer)
     FileMonitorMsg msg;
     msg.decode(buffer);
     std::string filename = msg.filename;
+    Logger::log("ClientDaemon received from FileMonitor: " + filename + " " + std::to_string(msg.event));
 
     if (msg.event == FileMonitorProtocol::FMP_FILE_CHANGE)
     {
@@ -199,6 +203,7 @@ void ClientDaemon::processFileReadMsg(const char *buffer)
 {
     FileHandlerMessage msg;
     msg.decode(buffer);
+    Logger::log("Sending to server file: " + std::string(msg.filename) + " " + std::to_string(msg.size) + " bytes");
 
     if (msg.size == 0)
     {
@@ -215,6 +220,7 @@ void ClientDaemon::processFileWriteMsg(const char *buffer)
 {
     FileHandlerMessage msg;
     msg.decode(buffer);
+    Logger::log("Received file from server: " + std::string(msg.filename) + " " + std::to_string(msg.size) + " bytes");
 
     fileMonitor->disableFile(msg.filename);
     filesBeingWritten.insert(msg.filename);
@@ -259,6 +265,7 @@ void ClientDaemon::processFileDeleteMsg(const char *buffer)
 {
     FileHandlerMessage msg;
     msg.decode(buffer);
+    Logger::log("File deleted in the server: " + std::string(msg.filename));
 
     fileMonitor->disableFile(msg.filename);
 
@@ -273,6 +280,7 @@ void ClientDaemon::processFileUploadMsg(const char *buffer)
 {
     FileHandlerMessage msg;
     msg.decode(buffer);
+    Logger::log("File uploading to the server: " + std::string(msg.filename) + " " + std::to_string(msg.size) + " bytes");
 
     if (msg.size == 0)
     {
@@ -290,7 +298,6 @@ void ClientDaemon::processInterfaceCommand(const char *buffer)
 {
     InterfaceCommandMsg msg;
     msg.decode(buffer);
-    std::cout << "Received command: " << static_cast<int>(msg.command) << std::endl;
 
     switch (msg.command)
     {
@@ -336,7 +343,7 @@ void ClientDaemon::processInterfaceCommand(const char *buffer)
         break;
     }
     default:
-        std::cerr << "Unknown command received: " << +buffer[1] << std::endl;
+        Logger::log("Unknown command received from the interface: " + std::to_string(+buffer[1]));
         break;
     }
 }
@@ -365,6 +372,7 @@ void printFileAndMACTimes(const std::filesystem::path &filepath)
 
 void ClientDaemon::listClientFiles()
 {
+    Logger::log("Listing files in sync_dir");
     std::cout << "Files in sync_dir:" << std::endl;
 
     for (const auto &entry : std::filesystem::directory_iterator(syncDir))
@@ -380,6 +388,7 @@ void ClientDaemon::listClientFiles()
 
 void ClientDaemon::listServerFiles()
 {
+    Logger::log("Requesting list of files from server");
     ListClientCommandMsg msg;
     char *buffer = msg.encode();
     buffer[0] = LIST_SERVER_FILES_MSG;
@@ -389,6 +398,7 @@ void ClientDaemon::listServerFiles()
 
 void ClientDaemon::downloadFile(const std::string filename)
 {
+    Logger::log("Attempting to download file from command: " + filename);
     std::string fullFilename = "./" + filename;
     FileHandlerMessage msg(0, fullFilename.c_str(), 0, NULL);
     char *buffer = msg.encode();
@@ -400,8 +410,8 @@ void ClientDaemon::downloadFile(const std::string filename)
 void ClientDaemon::uploadFile(const std::string &path)
 {
     std::string filename = filenameFromPath(path);
-    std::cout << "Uploading file: " << filename << std::endl;
-    std::cout << "Path: " << path << std::endl;
+    Logger::log("Attempting to upload file from command: " + path);
+    std::cout << "Uploading file: " << path << std::endl;
     std::string filepath = std::string(path);
     FileReader *fileReader = new FileReader(username, 0, fileMutexes.getOrAddMutex(filename), filename, &socketClient, filepath);
 
@@ -411,6 +421,7 @@ void ClientDaemon::uploadFile(const std::string &path)
 
 void ClientDaemon::deleteFile(const std::string &filename)
 {
+    Logger::log("Attempting to delete file from command: " + filename);
     FileDeleter deleter = FileDeleter(username, 0, fileMutexes.getOrAddMutex(filename), filename);
     deleter.start();
     deleter.join();
@@ -418,6 +429,7 @@ void ClientDaemon::deleteFile(const std::string &filename)
 
 void ClientDaemon::synchronize()
 {
+    Logger::log("Sending sync all message to server");
     SyncAllMsg msg = SyncAllMsg();
     char *buffer = msg.encode();
     serverSocket->write(buffer);
@@ -426,6 +438,7 @@ void ClientDaemon::synchronize()
 
 void ClientDaemon::processListServerFilesMsg(const char *buffer)
 {
+    Logger::log("Received list of files from server");
     ListServerCommandMsg msg;
     msg.decode(buffer);
     std::cout << msg.data << std::endl;

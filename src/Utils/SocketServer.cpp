@@ -1,4 +1,5 @@
 #include "Utils/SocketServer.hpp"
+#include "Utils/Logger.hpp"
 #include <iostream>
 #include <cstring>
 #include <unistd.h>
@@ -10,7 +11,7 @@ SocketServer::SocketServer(int port)
     socket = ::socket(AF_INET, SOCK_STREAM, 0);
     if (socket == 0)
     {
-        std::cerr << "Error while creating socket." << std::endl;
+        Logger::log("Error while creating socket.");
     }
 
     address.sin_family = AF_INET;
@@ -20,12 +21,12 @@ SocketServer::SocketServer(int port)
 
     if (bind(socket, (struct sockaddr *)&address, address_len) < 0)
     {
-        std::cerr << "Error while binding socket." << std::endl;
+        Logger::log("Error while binding socket to port " + std::to_string(address.sin_port));
     }
 
     if (getsockname(socket, (struct sockaddr *)&address, &address_len) < 0)
     {
-        std::cerr << "Error while getting socket info." << std::endl;
+        Logger::log("Error while getting socket info for port " + std::to_string(address.sin_port));
     }
 
     this->port = ntohs(address.sin_port);
@@ -35,7 +36,7 @@ std::tuple<socket_t, struct sockaddr_in> SocketServer::listenAndAccept()
 {
     if (::listen(socket, 20) < 0)
     {
-        std::cerr << "Error while listening." << std::endl;
+        Logger::log("Error while listening on port " + std::to_string(port));
     }
 
     int clilen = sizeof(struct sockaddr_in);
@@ -43,7 +44,7 @@ std::tuple<socket_t, struct sockaddr_in> SocketServer::listenAndAccept()
     socket_t new_socket;
     if ((new_socket = accept(socket, (struct sockaddr *)&client_address, (socklen_t *)&clilen)) < 0)
     {
-        std::cerr << "Error while accepting connection." << std::endl;
+        Logger::log("Error while accepting connection on port " + std::to_string(port) + "; Client info: " + std::string(inet_ntoa(client_address.sin_addr)) + ":" + std::to_string(client_address.sin_port));
     }
 
     return std::make_tuple(new_socket, client_address);
@@ -51,5 +52,6 @@ std::tuple<socket_t, struct sockaddr_in> SocketServer::listenAndAccept()
 
 void SocketServer::close()
 {
+    Logger::log("Closing socket on port " + std::to_string(port));
     ::close(socket);
 }
