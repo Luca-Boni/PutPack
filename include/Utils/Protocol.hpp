@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Utils/SocketServerSession.hpp"
-#include "Client/ClientInterfaceProtocol.hpp"
 #include <cstring>
 #include <string>
 #include <vector>
@@ -87,6 +86,28 @@ struct EndClientMsg
     EndClientMsg() : clientId(0), username(""){}
     char* encode();
     void decode(const char* buffer);
+};
+
+enum class InterfaceCommand : unsigned char
+{
+    UPLOAD,
+    DOWNLOAD,
+    DELETE,
+    LIST_SERVER,
+    LIST_CLIENT,
+    GET_SYNC_DIR,
+    EXIT
+};
+
+class InterfaceCommandMsg
+{
+public:
+    InterfaceCommand command;
+
+    InterfaceCommandMsg() {}
+    InterfaceCommandMsg(InterfaceCommand command) : command(command) {}
+    char *encode();
+    void decode(const char *buffer);
 };
 
 class ListServerCommandMsg : public InterfaceCommandMsg

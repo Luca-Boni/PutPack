@@ -189,7 +189,7 @@ void UserManager::processFileReadMsg(const char *buffer)
 {
     struct FileHandlerMessage msg;
     msg.decode(buffer);
-    Logger::log("Reading file: " + username + " " + std::to_string(msg.clientId) + " " + msg.filename);
+    // Logger::log("Reading file: " + username + " " + std::to_string(msg.clientId) + " " + msg.filename);
     SocketServerSession *clientManagerSocket = clientManagerSockets[msg.clientId];
     clientManagerSocket->write(buffer);
 }

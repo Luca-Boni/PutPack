@@ -110,13 +110,13 @@ void ClientManager::processEndClientMsg(const char *buffer)
 {
     EndClientMsg msg;
     msg.decode(buffer);
-    Logger::log("ClientManager: Client disconnected: " + username + " " + std::to_string(clientId));
     msg.clientId = clientId;
     char *newBuffer = msg.encode();
     userManagerSocket->write(newBuffer);
     serverDaemonSocket->write(newBuffer);
     delete[] newBuffer;
     shouldStop = true;
+    Logger::log("ClientManager: Client disconnected: " + username + " " + std::to_string(clientId));
 }
 
 void ClientManager::processFileUploadMsg(char *buffer)

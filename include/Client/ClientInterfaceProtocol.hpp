@@ -1,31 +1,10 @@
 #pragma once
 
+#include "Utils/Protocol.hpp"
 #include <string>
 #include <vector>
 
 std::string filenameFromPath(const std::string &path);
-
-enum class InterfaceCommand : unsigned char
-{
-    UPLOAD,
-    DOWNLOAD,
-    DELETE,
-    LIST_SERVER,
-    LIST_CLIENT,
-    GET_SYNC_DIR,
-    EXIT
-};
-
-class InterfaceCommandMsg
-{
-public:
-    InterfaceCommand command;
-
-    InterfaceCommandMsg() {}
-    InterfaceCommandMsg(InterfaceCommand command) : command(command) {}
-    char *encode();
-    void decode(const char *buffer);
-};
 
 class FileChangeCommandMsg : public InterfaceCommandMsg
 {

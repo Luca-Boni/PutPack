@@ -4,25 +4,6 @@
 #include <cstring>
 #include <iostream>
 
-char *InterfaceCommandMsg::encode()
-{
-    int offset = 0;
-    char *buffer = new char[SOCKET_BUFFER_SIZE]();
-
-    buffer[offset] = INTERFACE_COMMAND_MSG;
-    offset += sizeof(unsigned char);
-
-    buffer[offset] = static_cast<unsigned char>(command);
-    offset += sizeof(unsigned char);
-
-    return buffer;
-}
-
-void InterfaceCommandMsg::decode(const char *buffer)
-{
-    command = static_cast<InterfaceCommand>(buffer[1]);
-}
-
 char *FileChangeCommandMsg::encode()
 {
     char *buffer = new char[SOCKET_BUFFER_SIZE]();

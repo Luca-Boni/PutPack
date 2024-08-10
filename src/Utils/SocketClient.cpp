@@ -64,12 +64,12 @@ void SocketClient::write(const char* buffer)
 {
     writeMutex.lock();
     int size = ::write(client_fd, buffer, SOCKET_BUFFER_SIZE);
+    writeMutex.unlock();
     if (size < 0)
     {
         this->errors |= SocketClientError::CANT_WRITE;
         Logger::log("Error while writing to socket on server " + getServerIP() + ":" + std::to_string(getServerPort()));
     }
-    writeMutex.unlock();
 }
 
 char* SocketClient::read()

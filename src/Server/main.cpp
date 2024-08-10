@@ -66,6 +66,7 @@ int main(int argc, char *argv[])
 
         connectionManager.join();
         serverDaemon.join();
+        logger.stop();
     }
 
     return 0;

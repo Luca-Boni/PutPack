@@ -1,5 +1,6 @@
 #include "Client/ClientMenu.hpp"
 #include "Client/ClientInterfaceProtocol.hpp"
+#include "Utils/Protocol.hpp"
 
 #include <iostream>
 #include <string>
@@ -126,7 +127,7 @@ void ClientMenu::deleteFile()
 
 void ClientMenu::listServerFiles()
 {
-    ListClientCommandMsg listMsg;
+    ListServerCommandMsg listMsg;
     char *buffer = listMsg.encode();
     clientDaemonSocket->write(buffer);
     delete[] buffer;

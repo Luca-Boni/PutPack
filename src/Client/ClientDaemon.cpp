@@ -92,8 +92,11 @@ void *ClientDaemon::execute(void *dummy)
         case FILE_UPLOAD_MSG: // Arquivo enviado para o servidor -> deve sincronizar em todos os clientes
             processFileUploadMsg(buffer);
             break;
+        // Recebeu a lista de arquivos do servidor
         case LIST_SERVER_FILES_MSG:
             processListServerFilesMsg(buffer);
+            break;
+        // Recebeu mensagem com código zero -> provável erro na socket
         case SERVER_DEAD:
             Logger::log("Server is dead.");
             shouldStop = true;
@@ -220,7 +223,7 @@ void ClientDaemon::processFileWriteMsg(const char *buffer)
 {
     FileHandlerMessage msg;
     msg.decode(buffer);
-    Logger::log("Received file from server: " + std::string(msg.filename) + " " + std::to_string(msg.size) + " bytes");
+    // Logger::log("Received file from server: " + std::string(msg.filename) + " " + std::to_string(msg.size) + " bytes");
 
     fileMonitor->disableFile(msg.filename);
     filesBeingWritten.insert(msg.filename);

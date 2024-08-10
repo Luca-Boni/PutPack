@@ -37,11 +37,12 @@ char* SocketServerSession::read()
 void SocketServerSession::write(const char* message)
 {
     writeMutex.lock();
-    if (::write(reader_fd, message, SOCKET_BUFFER_SIZE) < 0)
+    int size = ::write(reader_fd, message, SOCKET_BUFFER_SIZE);
+    writeMutex.unlock();
+    if (size < 0)
     {
         Logger::log("Error while writing to socket of client " + getClientIP() + ":" + std::to_string(getClientPort()));
     }
-    writeMutex.unlock();
 }
 
 void SocketServerSession::close()

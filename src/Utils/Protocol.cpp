@@ -95,6 +95,25 @@ void EndClientMsg::decode(const char* buffer)
     strcpy(username, buffer + 1 + sizeof(unsigned long long));
 }
 
+char *InterfaceCommandMsg::encode()
+{
+    int offset = 0;
+    char *buffer = new char[SOCKET_BUFFER_SIZE]();
+
+    buffer[offset] = INTERFACE_COMMAND_MSG;
+    offset += sizeof(unsigned char);
+
+    buffer[offset] = static_cast<unsigned char>(command);
+    offset += sizeof(unsigned char);
+
+    return buffer;
+}
+
+void InterfaceCommandMsg::decode(const char *buffer)
+{
+    command = static_cast<InterfaceCommand>(buffer[1]);
+}
+
 char *ListServerCommandMsg::encode()
 {
     char* buffer = new char[SOCKET_BUFFER_SIZE]();

@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
 
     serverReceiver.stop();
     clientDaemon.join();
+    logger.stop();
 
     std::cout << "Client stopped sucessfully." << std::endl;
 

@@ -72,7 +72,7 @@ void Logger::stop()
 
 void Logger::log(const std::string &message)
 {
-    if (logger != NULL)
+    if (logger != NULL && logger->socketClient.isConnected())
     {
         logger->socketClient.write(message.c_str());
     }
