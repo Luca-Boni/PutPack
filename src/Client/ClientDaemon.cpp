@@ -444,5 +444,5 @@ void ClientDaemon::processListServerFilesMsg(const char *buffer)
     Logger::log("Received list of files from server");
     ListServerCommandMsg msg;
     msg.decode(buffer);
-    std::cout << msg.data << std::endl;
+    std::cout << msg.data;
 }

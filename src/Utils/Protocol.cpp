@@ -119,8 +119,11 @@ char *ListServerCommandMsg::encode()
     char* buffer = new char[SOCKET_BUFFER_SIZE]();
     int offset = 0;
 
-    buffer[offset] = LIST_SERVER_FILES_MSG;
-    offset += 1;
+    buffer[offset] = INTERFACE_COMMAND_MSG;
+    offset += sizeof(unsigned char);
+
+    buffer[offset] = static_cast<unsigned char>(command);
+    offset += sizeof(unsigned char);
 
     memcpy(buffer + offset, &clientId, sizeof(unsigned long long));
     offset += sizeof(unsigned long long);
@@ -136,8 +139,10 @@ void ListServerCommandMsg::decode(const char* buffer)
 {
     char cutData[SOCKET_BUFFER_SIZE] = {0};
 
-    clientId = *(unsigned long long*)(buffer + 1);
+    int offset = 2;
+    clientId = *(unsigned long long*)(buffer + offset);
+    offset += sizeof(unsigned long long);
 
-    memcpy(cutData, (buffer + 1 + sizeof(unsigned long long)), SOCKET_BUFFER_SIZE - 2);
+    memcpy(cutData, (buffer + offset), SOCKET_BUFFER_SIZE - 2);
     data = std::string(cutData);
 }

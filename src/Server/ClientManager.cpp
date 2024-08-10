@@ -50,6 +50,7 @@ void *ClientManager::execute(void *dummy)
             break;
         case LIST_SERVER_FILES_MSG:
             processListServerFilesMsg(buffer);
+            break;
         default:
             Logger::log("Unknown message received: " + +buffer[0]);
             break;
@@ -169,6 +170,7 @@ void ClientManager::processListServerFilesMsg(const char *buffer)
     Logger::log("Listing server files: " + username + " " + std::to_string(clientId));
     msg.clientId = clientId;
     char* newBuffer = msg.encode();
+    newBuffer[0] = LIST_SERVER_FILES_MSG;
     userManagerSocket->write(newBuffer);
     delete[] newBuffer;
 }

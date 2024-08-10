@@ -5,23 +5,23 @@
 #include <string>
 #include <vector>
 
-#define SERVER_DEAD           (unsigned char)0
-#define STOP_MSG              (unsigned char)1
-#define FILE_MONITOR_MSG      (unsigned char)2
-#define FILE_READ_MSG         (unsigned char)3
-#define FILE_WRITE_MSG        (unsigned char)4
-#define SYNC_MSG              (unsigned char)5
-#define NEW_CLIENT_MSG        (unsigned char)6
-#define END_CLIENT_MSG        (unsigned char)7
-#define FILE_DELETE_MSG       (unsigned char)8 // file deleted naturally
-#define FILE_UPLOAD_MSG       (unsigned char)9
-#define CLIENT_CONNECTED_MSG  (unsigned char)10
-#define REJECT_CONNECT_MSG    (unsigned char)11
-#define INTERFACE_COMMAND_MSG (unsigned char)12
-#define FILE_MODIFIED_MSG     (unsigned char)13
-#define FILE_DOWNLOAD_MSG     (unsigned char)14
-#define FILE_DEL_CMD_MSG      (unsigned char)15 // file deleted via command
-#define LIST_SERVER_FILES_MSG (unsigned char)16
+#define SERVER_DEAD               (unsigned char)0
+#define STOP_MSG                  (unsigned char)1
+#define FILE_MONITOR_MSG          (unsigned char)2
+#define FILE_READ_MSG             (unsigned char)3
+#define FILE_WRITE_MSG            (unsigned char)4
+#define SYNC_MSG                  (unsigned char)5
+#define NEW_CLIENT_MSG            (unsigned char)6
+#define END_CLIENT_MSG            (unsigned char)7
+#define FILE_DELETE_MSG           (unsigned char)8 // file deleted naturally
+#define FILE_UPLOAD_MSG           (unsigned char)9
+#define CLIENT_CONNECTED_MSG      (unsigned char)10
+#define REJECT_CONNECT_MSG        (unsigned char)11
+#define INTERFACE_COMMAND_MSG     (unsigned char)12
+#define FILE_MODIFIED_MSG         (unsigned char)13
+#define FILE_DOWNLOAD_MSG         (unsigned char)14
+#define FILE_DEL_CMD_MSG          (unsigned char)15 // file deleted via command
+#define LIST_SERVER_FILES_MSG     (unsigned char)16
 
 #define FILENAME_SIZE 128 * sizeof(char)
 #define USERNAME_SIZE FILENAME_SIZE

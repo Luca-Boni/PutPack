@@ -69,6 +69,7 @@ void *UserManager::execute(void *dummy)
             break;
         case LIST_SERVER_FILES_MSG:
             processListServerFilesMsg(buffer);
+            break;
         case STOP_MSG: // Para a thread
             shouldStop = true;
             break;
@@ -272,10 +273,10 @@ std::string getFileAndMACTimes(const std::filesystem::path &filepath)
 
     std::string out = "";
 
-    out + "Filename: " + filepath.filename().string() + "\n";
-    out + "    Last modified: " + mtime + "\n";
-    out + "    Last accessed: " + atime + "\n";
-    out + "          Created: " + ctime + "\n";
+    out = "Filename: " + filepath.filename().string() + "\n"
+        + "    Last modified: " + mtime + "\n"
+        + "    Last accessed: " + atime + "\n"
+        + "          Created: " + ctime + "\n";
 
     return out;
 }
@@ -297,7 +298,8 @@ void UserManager::processListServerFilesMsg(const char* buffer)
     }
 
     msg.data = filesInfo;
-    char *newbuffer = msg.encode();
-    clientManagerSockets[msg.clientId]->write(newbuffer);
-    delete[] newbuffer;
+    char *newBuffer = msg.encode();
+    newBuffer[0] = LIST_SERVER_FILES_MSG;
+    clientManagerSockets[msg.clientId]->write(newBuffer);
+    delete[] newBuffer;
 }
