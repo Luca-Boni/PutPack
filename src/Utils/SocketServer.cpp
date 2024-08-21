@@ -21,12 +21,12 @@ SocketServer::SocketServer(int port)
 
     if (bind(socket, (struct sockaddr *)&address, address_len) < 0)
     {
-        Logger::log("Error while binding socket to port " + std::to_string(address.sin_port));
+        Logger::log("Error while binding socket to port " + std::to_string(port));
     }
 
     if (getsockname(socket, (struct sockaddr *)&address, &address_len) < 0)
     {
-        Logger::log("Error while getting socket info for port " + std::to_string(address.sin_port));
+        Logger::log("Error while getting socket info for port " + std::to_string(port));
     }
 
     this->port = ntohs(address.sin_port);

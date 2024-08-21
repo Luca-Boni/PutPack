@@ -12,7 +12,7 @@ unsigned long long FileHandler::lastId = 0;
 
 std::string getFileFolder(std::string username)
 {
-    char path[FILENAME_MAX];
+    char path[FILENAME_MAX] = {0};
     ssize_t count = readlink("/proc/self/exe", path, FILENAME_MAX);
     std::string exe_dir = std::filesystem::path(std::string(path)).parent_path().string();
     return exe_dir + "/sync_dir_" + username + "/";
@@ -99,7 +99,7 @@ void FileHandler::readFile()
         std::streamsize bytesRead = file.gcount();
         done = (file.peek() == EOF);
 
-        struct FileHandlerMessage msg = FileHandlerMessage(clientId, filename.c_str(), bytesRead, buffer);
+        struct FileHandlerMessage msg = FileHandlerMessage(clientId, user, id, filename.c_str(), bytesRead, buffer);
         char *msg_buffer = msg.encode();
         if (isUpload)
             msg_buffer[0] = FILE_UPLOAD_MSG;
@@ -109,7 +109,7 @@ void FileHandler::readFile()
         delete[] buffer;
     } while (!done);
 
-    struct FileHandlerMessage msg = FileHandlerMessage(clientId, filename.c_str(), 0, NULL);
+    struct FileHandlerMessage msg = FileHandlerMessage(clientId, user, id, filename.c_str(), 0, NULL);
     char *msg_buffer = msg.encode();
     if (isUpload)
         msg_buffer[0] = FILE_UPLOAD_MSG;

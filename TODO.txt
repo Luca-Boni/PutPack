@@ -1,0 +1,23 @@
+1.
+- Mensagem de novo servidor - não precisa sincronizar estados -> antes do cliente
+
+2.
+- Mensagem de novo cliente/cliente desconectado entre primário e backups
+
+3.
+- ClientManagers de diferentes instâncias comunicando-se entre si
+- Comportamento de backup - não envia mensagens para os clientes, no lugar envia confirmação para o primário
+
+4.
+- FrontEnd no cliente
+
+5.
+- Eleição
+    - Timer
+    - Tratamento do ImAlive
+    - Tratamento da checagem do ImAlive
+
+Extra
+- Cliente esperar por resposta do servidor nas seguintes mensagens:
+    - FILE_UPLOAD_MSG
+    - FILE_MONITOR_MSG: ao deletar arquivo

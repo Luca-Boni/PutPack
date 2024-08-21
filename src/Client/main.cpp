@@ -22,15 +22,17 @@ int main(int argc, char *argv[])
     ServerReceiver serverReceiver = ServerReceiver(serverAddress, serverPort);
     SocketClient *serverSocket = serverReceiver.getServerSocket();
 
-    ClientDaemon clientDaemon = ClientDaemon(username, serverSocket);
+    ClientDaemon clientDaemon = ClientDaemon(username, serverSocket, &serverReceiver);
     SocketClient *clientSocket = clientDaemon.getSocketClient();
+    SocketClient *confSocket = clientDaemon.getCliConfSocket();
 
     serverReceiver.setClientSocket(clientSocket);
+    serverReceiver.setConfSocket(confSocket);
 
     serverReceiver.start();
     clientDaemon.start();
     clientSocket->connect();
-    
+    confSocket->connect();
 
     ClientMenu clientMenu = ClientMenu(clientSocket);
     clientMenu.start();

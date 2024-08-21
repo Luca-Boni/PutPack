@@ -19,10 +19,43 @@ void *ConnectionManager::execute(void *dummy)
         SocketServerSession *socket = new SocketServerSession(socketServer.listenAndAccept());
 
         char* buffer = socket->read();
-        ClientConnectedMsg msg;
-        msg.decode(buffer);
-        msg.clientSocket = socket;
-        serverDaemonClientSocket->write(msg.encode());
+
+        if (buffer[0] == CLIENT_CONNECTED_MSG)
+        {
+            ClientConnectedMsg msg;
+            msg.decode(buffer);
+            msg.clientSocket = socket;
+            char *newBuffer = msg.encode();
+            serverDaemonClientSocket->write(newBuffer);
+            delete[] newBuffer;
+        }
+        else if (buffer[0] == NEW_SERVER_MSG)
+        {
+            NewServerMsg msg;
+            msg.decode(buffer);
+            msg.address = socket->getClientIP();
+            SocketClient *newSocket = new SocketClient(msg.address.c_str(), msg.port);
+            newSocket->connect();
+            msg.socket = newSocket;
+            // msg.port = socket->getClientPort();
+            char *newBuffer = msg.encode();
+            serverDaemonClientSocket->write(newBuffer);
+            delete[] newBuffer;
+        }
+        else if (buffer[0] == NEXT_IN_RING_MSG)
+        {
+            NextInRingMsg msg;
+            msg.decode(buffer);
+            // msg.address = socket->getClientIP();
+            // msg.port = socket->getClientPort();
+            char *newBuffer = msg.encode();
+            serverDaemonClientSocket->write(newBuffer);
+            delete[] newBuffer;
+        }
+        else
+        {
+            Logger::log("ConnectionManager: Unknown message received: " + std::to_string(+buffer[0]));
+        }
         delete[] buffer;
     }
 }

@@ -4,14 +4,18 @@
 FileHandlerMessage::FileHandlerMessage()
 {
     this->clientId = 0;
+    this->fileHandlerId = 0;
     this->filename = new char[FILENAME_SIZE]();
     this->size = 0;
     this->data = new char[FILE_BUFFER_SIZE]();
 }
 
-FileHandlerMessage::FileHandlerMessage(unsigned long long clientId, const char *filename, unsigned int size, const char *data)
+FileHandlerMessage::FileHandlerMessage(unsigned long long clientId, std::string username, unsigned long long fileHandlerId, const char *filename, unsigned int size, const char *data)
 {
     this->clientId = clientId;
+    memcpy(this->username, username.c_str(), 49);
+    this->username[49] = '\0';
+    this->fileHandlerId = fileHandlerId;
     this->filename = new char[FILENAME_SIZE]();
     this->size = size;
     this->data = new char[FILE_BUFFER_SIZE]();
@@ -32,6 +36,12 @@ char *FileHandlerMessage::encode()
     pos += sizeof(char);
 
     memcpy(&msg_buffer[pos], &clientId, sizeof(unsigned long long));
+    pos += sizeof(unsigned long long);
+
+    memcpy(&msg_buffer[pos], username, USERNAME_SIZE);
+    pos += USERNAME_SIZE;
+
+    memcpy(&msg_buffer[pos], &fileHandlerId, sizeof(unsigned long long));
     pos += sizeof(unsigned long long);
 
     if (filename != NULL)
@@ -63,6 +73,12 @@ void FileHandlerMessage::decode(const char *buffer)
     int pos = sizeof(char);
 
     clientId = *(unsigned long long *)(buffer + pos);
+    pos += sizeof(unsigned long long);
+    
+    memcpy(username, buffer+pos, USERNAME_SIZE);
+    pos += USERNAME_SIZE;
+
+    fileHandlerId = *(unsigned long long *)(buffer + pos);
     pos += sizeof(unsigned long long);
 
     memcpy(filename, buffer + pos, FILENAME_SIZE);

@@ -10,10 +10,12 @@
 #include "Utils/Logger.hpp"
 #include "Utils/Hash.hpp"
 #include <unordered_map>
+#include <tuple>
 
 class UserManager : public Thread
 {
 private:
+    bool backup;
     std::string username;
     std::vector<std::string> files;
     bool shouldStop;
@@ -24,9 +26,13 @@ private:
 
     MutexHash<std::string> fileMutexes; // Mutexes to protect the files
 
-    std::unordered_map<unsigned long long, FileReader *> fileReaders;
-    std::unordered_map<unsigned long long, FileWriter *> fileWriters;
+    std::unordered_map<unsigned long long, std::unordered_map<unsigned long long, FileReader *>> fileReaders; // Chave de fora = clientId, chave do map = fileHandlerId
+    std::unordered_map<unsigned long long, std::unordered_map<unsigned long long, FileWriter *>> fileWriters;
     std::unordered_map<unsigned long long, SocketServerSession *> fileWriterSessions;
+    std::unordered_map<unsigned long long, bool> isSyncing;
+
+    // std::unordered_map<unsigned long long, FileReader *> fileReaders;
+    // std::unordered_map<unsigned long long, FileWriter *> fileWriters;
 
     std::unordered_map<unsigned long long, SocketServerSession *> clientManagerSockets;
 
@@ -39,13 +45,19 @@ private:
     void processFileDeleteMsg(const char *buffer);
     void processFileDownloadMsg(const char *buffer);
     void processListServerFilesMsg(const char *buffer);
+
+    void processSetToPrimaryMsg(const char *buffer);
     
     void readAllFiles(unsigned long long clientId);
 
 public:
-    UserManager(const std::string username);
+    UserManager(const std::string username, bool backup);
     ~UserManager(){};
     SocketClient *getSocketClient() { return &socketClient; };
     void stopGraciously();
     void stop();
+
+    void setClientManagerSockets(std::unordered_map<unsigned long long, SocketServerSession *> clientManagerSockets);
+
+    void setToPrimary();
 };

@@ -3,15 +3,25 @@
 #include "Utils/FileHandlerProtocol.hpp"
 #include <iostream>
 
-ClientManager::ClientManager(const std::string username, const unsigned long long clientId, SocketServerSession *socket, SocketClient *userManagerSocket, SocketClient *serverDaemonSocket) : Thread(std::bind(&ClientManager::execute, this, std::placeholders::_1), NULL),
-                                                                                                                                                                                              username(username),
-                                                                                                                                                                                              shouldStop(false),
-                                                                                                                                                                                              clientId(clientId),
-                                                                                                                                                                                              socket(socket),
-                                                                                                                                                                                              userManagerSocket(userManagerSocket),
-                                                                                                                                                                                              serverDaemonSocket(serverDaemonSocket)
+ClientManager::ClientManager(const std::string username, const unsigned long long clientId, SocketServerSession *socket, SocketClient *userManagerSocket, SocketClient *serverDaemonSocket, bool backup, std::string FEAddress, int FEPort, std::string ownAddress) : Thread(std::bind(&ClientManager::execute, this, std::placeholders::_1), NULL),
+                                                                                                                                                                                                                                                                      username(username),
+                                                                                                                                                                                                                                                                      shouldStop(false),
+                                                                                                                                                                                                                                                                      clientId(clientId),
+                                                                                                                                                                                                                                                                      socket(socket),
+                                                                                                                                                                                                                                                                      userManagerSocket(userManagerSocket),
+                                                                                                                                                                                                                                                                      serverDaemonSocket(serverDaemonSocket),
+                                                                                                                                                                                                                                                                      backup(backup),
+                                                                                                                                                                                                                                                                      FEAddress(FEAddress),
+                                                                                                                                                                                                                                                                      FEPort(FEPort),
+                                                                                                                                                                                                                                                                      ownAddress(ownAddress)
 {
+    setToPrimaryMutex = Mutex();
     filesBeingEdited = std::unordered_set<std::string>();
+    if (backup)
+    {
+        serverDaemonSocketServer = SocketServer();
+        serverDaemonSocketClient = SocketClient(ownAddress.c_str(), serverDaemonSocketServer.getPort());
+    }
 }
 
 void *ClientManager::execute(void *dummy)
@@ -21,9 +31,15 @@ void *ClientManager::execute(void *dummy)
     userManagerSocket->write(buffer);
     delete[] buffer;
 
+    if (backup)
+    {
+        socket = new SocketServerSession(serverDaemonSocketServer.listenAndAccept());
+    }
+
     while (!shouldStop || (filesBeingEdited.size() > 0))
     {
         char *buffer = socket->read();
+        setToPrimaryMutex.lock();
 
         switch (buffer[0])
         {
@@ -55,8 +71,8 @@ void *ClientManager::execute(void *dummy)
             Logger::log("Unknown message received: " + +buffer[0]);
             break;
         }
-
         delete[] buffer;
+        setToPrimaryMutex.unlock();
     }
 
     return NULL;
@@ -81,6 +97,7 @@ void ClientManager::processFileDeleteMsg(const char *buffer)
     msg.clientId = clientId;
     char *newBuffer = msg.encode();
     newBuffer[0] = FILE_DELETE_MSG;
+    redirectMsgToBackups(newBuffer);
     userManagerSocket->write(newBuffer);
     delete[] newBuffer;
 }
@@ -103,6 +120,7 @@ void ClientManager::processFileWriteMsg(const char *buffer)
     msg.clientId = clientId;
     char *newBuffer = msg.encode();
     newBuffer[0] = FILE_WRITE_MSG;
+    redirectMsgToBackups(newBuffer);
     userManagerSocket->write(newBuffer);
     delete[] newBuffer;
 }
@@ -113,6 +131,7 @@ void ClientManager::processEndClientMsg(const char *buffer)
     msg.decode(buffer);
     msg.clientId = clientId;
     char *newBuffer = msg.encode();
+    redirectMsgToBackups(newBuffer);
     userManagerSocket->write(newBuffer);
     serverDaemonSocket->write(newBuffer);
     delete[] newBuffer;
@@ -136,6 +155,7 @@ void ClientManager::processFileUploadMsg(char *buffer)
     }
 
     buffer[0] = FILE_WRITE_MSG;
+    redirectMsgToBackups(buffer);
     userManagerSocket->write(buffer); // Não identificamos o ClientManager, dessa forma atualiza para todos
 }
 
@@ -147,6 +167,7 @@ void ClientManager::processFileDelCmdMsg(const char *buffer)
     msg.clientId = 0; // Comando de deletar arquivo não tem clientId -> deleta para todos clientes
     char *newBuffer = msg.encode();
     newBuffer[0] = FILE_DELETE_MSG;
+    redirectMsgToBackups(newBuffer);
     userManagerSocket->write(newBuffer);
     delete[] newBuffer;
 }
@@ -169,8 +190,46 @@ void ClientManager::processListServerFilesMsg(const char *buffer)
     msg.decode(buffer);
     Logger::log("Listing server files: " + username + " " + std::to_string(clientId));
     msg.clientId = clientId;
-    char* newBuffer = msg.encode();
+    char *newBuffer = msg.encode();
     newBuffer[0] = LIST_SERVER_FILES_MSG;
     userManagerSocket->write(newBuffer);
     delete[] newBuffer;
+}
+
+void ClientManager::redirectMsgToBackups(const char *buffer)
+{
+    if (!backup)
+    {
+        char *newBuffer = new char[SOCKET_BUFFER_SIZE];
+        memcpy(newBuffer, buffer, SOCKET_BUFFER_SIZE);
+        newBuffer[0] += SEND_CLI_REDIRECT_MSG;
+        serverDaemonSocket->write(newBuffer);
+        delete[] newBuffer;
+    }
+}
+
+void ClientManager::setToPrimary()
+{
+    setToPrimaryMutex.lock();
+
+    Logger::log("Setting to primary: " + username + " " + std::to_string(clientId));
+    backup = false;
+
+    SocketClient FEClient(FEAddress.c_str(), FEPort);
+    Logger::log("Connecting to FE: " + FEAddress + " " + std::to_string(FEPort));
+    FEClient.connect();
+
+    backupServerSocket = SocketServer();
+
+    NewServerMsg msg = NewServerMsg(0, ownAddress, backupServerSocket.getPort(), NULL);
+    char *buffer = msg.encode();
+    FEClient.write(buffer);
+    delete[] buffer;
+
+    FEClient.close();
+
+    socket->close();
+    socket = new SocketServerSession(backupServerSocket.listenAndAccept());
+    Logger::log("FE connected: " + FEAddress + " " + std::to_string(FEPort));
+    setToPrimaryMutex.unlock();
 }

@@ -12,14 +12,21 @@
 #include <ctime>
 #include <sys/stat.h>
 
-ClientDaemon::ClientDaemon(const std::string &username, SocketClient *serverSocket) : Thread(std::bind(&ClientDaemon::execute, this, std::placeholders::_1), NULL),
-                                                                                      username(username),
-                                                                                      serverSocket(serverSocket),
-                                                                                      isConnected(false),
-                                                                                      shouldStop(false)
+#define MSG_MAX_RETRIES 5
+
+ClientDaemon::ClientDaemon(const std::string &username, SocketClient *serverSocket, ServerReceiver *serverReceiver) : Thread(std::bind(&ClientDaemon::execute, this, std::placeholders::_1), NULL),
+                                                                                                                      username(username),
+                                                                                                                      serverSocket(serverSocket),
+                                                                                                                      isConnected(false),
+                                                                                                                      shouldStop(false),
+                                                                                                                      isSyncing(true),
+                                                                                                                      serverReceiver(serverReceiver)
 {
     socket = SocketServer();
     socketClient = SocketClient("localhost", socket.getPort());
+
+    confSocket = SocketServer();
+    cliConfSocket = SocketClient("localhost", confSocket.getPort());
 
     filesBeingRead = std::unordered_set<std::string>();
     filesBeingWritten = std::unordered_set<std::string>();
@@ -37,6 +44,10 @@ ClientDaemon::ClientDaemon(const std::string &username, SocketClient *serverSock
     syncDir = exe_dir + "/sync_dir_" + username + "/";
 
     fileMonitor = new FileMonitor(syncDir, &socketClient);
+
+    frontEnd = new FrontEnd(&socketClient);
+    frontEndPort = frontEnd->getPort();
+
     Logger::log("ClientDaemon created: " + username);
 }
 
@@ -55,17 +66,20 @@ void *ClientDaemon::execute(void *dummy)
         deleter.join();
     }
 
-    socketSession = SocketServerSession(socket.listenAndAccept());
-    ClientConnectedMsg msg(username.c_str());
+    socketSession = new SocketServerSession(socket.listenAndAccept());
+    confirmationSocket = SocketServerSession(confSocket.listenAndAccept());
+
+    ClientConnectedMsg msg(username.c_str(), NULL, frontEndPort);
     char *buffer = msg.encode();
     serverSocket->write(buffer);
     delete[] buffer;
 
     fileMonitor->start();
+    frontEnd->start();
 
     while (!shouldStop || (filesBeingRead.size() > 0))
     {
-        char *buffer = socketSession.read();
+        char *buffer = socketSession->read();
 
         switch ((unsigned char)buffer[0])
         {
@@ -92,14 +106,20 @@ void *ClientDaemon::execute(void *dummy)
         case FILE_UPLOAD_MSG: // Arquivo enviado para o servidor -> deve sincronizar em todos os clientes
             processFileUploadMsg(buffer);
             break;
-        // Recebeu a lista de arquivos do servidor
-        case LIST_SERVER_FILES_MSG:
+        // Outros
+        case LIST_SERVER_FILES_MSG: // Recebeu a lista de arquivos do servidor
             processListServerFilesMsg(buffer);
+            break;
+        case SYNC_FINISHED_MSG: // Terminou de receber as mensagens de sincronização
+            isSyncing = false;
             break;
         // Recebeu mensagem com código zero -> provável erro na socket
         case SERVER_DEAD:
             Logger::log("Server is dead.");
-            shouldStop = true;
+            // shouldStop = true;
+            break;
+        case NEW_SERVER_MSG:
+            processNewServerMsg(buffer);
             break;
         default:
             Logger::log("Unknown message received: " + std::to_string(+buffer[0]));
@@ -161,7 +181,7 @@ void ClientDaemon::processFileMonitorMsg(const char *buffer)
             FileReader *reader = fileReaders[filename];
             reader->stop();
 
-            FileHandlerMessage msg(0, filename.c_str(), 0, NULL); // Envia mensagem de fim de arquivo para o servidor
+            FileHandlerMessage msg(0, username, reader->getId(), filename.c_str(), 0, NULL); // Envia mensagem de fim de arquivo para o servidor
             char *buffer = msg.encode();
             socketClient.write(buffer);
             delete[] buffer;
@@ -181,7 +201,7 @@ void ClientDaemon::processFileMonitorMsg(const char *buffer)
             reader->stop();
             fileReaders.erase(filename);
 
-            FileHandlerMessage msg(0, filename.c_str(), 0, NULL); // Envia mensagem de fim de arquivo para o servidor
+            FileHandlerMessage msg(0, username, reader->getId(), filename.c_str(), 0, NULL); // Envia mensagem de fim de arquivo para o servidor
             char *buffer = msg.encode();
             socketClient.write(buffer);
             delete[] buffer;
@@ -194,7 +214,7 @@ void ClientDaemon::processFileMonitorMsg(const char *buffer)
         deleter.join();
         fileMonitor->enableFile(filename);
 
-        FileHandlerMessage msg(0, filename.c_str(), 0, NULL);
+        FileHandlerMessage msg(0, username, deleter.getId(), filename.c_str(), 0, NULL);
         char *buffer = msg.encode();
         buffer[0] = FILE_DELETE_MSG;
         serverSocket->write(buffer);
@@ -213,10 +233,27 @@ void ClientDaemon::processFileReadMsg(const char *buffer)
         filesBeingRead.erase(msg.filename);
     }
 
-    char *newBuffer = msg.encode();
-    newBuffer[0] = FILE_WRITE_MSG; // Envia mensagem de escrita para o servidor
-    serverSocket->write(newBuffer);
-    delete[] newBuffer;
+    char *confBuffer = NULL;
+    int tries = 0;
+
+    do
+    {
+        ++tries;
+
+        char *newBuffer = msg.encode();
+        newBuffer[0] = FILE_WRITE_MSG; // Envia mensagem de escrita para o servidor
+        serverSocket->write(newBuffer);
+        delete[] newBuffer;
+
+        // Espera confirmação do servidor, ou tenta novamente o envio
+        confBuffer = confirmationSocket.read();
+    } while (confBuffer && confBuffer[0] != OK_MSG && tries < MSG_MAX_RETRIES);
+
+    if (confBuffer == NULL)
+        Logger::log("confBuffer is null, some error happened while reading from socket");
+
+    if (tries == MSG_MAX_RETRIES)
+        Logger::log("Max retries reached during processFileReadMsg");
 }
 
 void ClientDaemon::processFileWriteMsg(const char *buffer)
@@ -403,7 +440,7 @@ void ClientDaemon::downloadFile(const std::string filename)
 {
     Logger::log("Attempting to download file from command: " + filename);
     std::string fullFilename = "./" + filename;
-    FileHandlerMessage msg(0, fullFilename.c_str(), 0, NULL);
+    FileHandlerMessage msg(0, username, 0, fullFilename.c_str(), 0, NULL);
     char *buffer = msg.encode();
     buffer[0] = FILE_DOWNLOAD_MSG;
     serverSocket->write(buffer);
@@ -445,4 +482,17 @@ void ClientDaemon::processListServerFilesMsg(const char *buffer)
     ListServerCommandMsg msg;
     msg.decode(buffer);
     std::cout << msg.data;
+}
+
+void ClientDaemon::processNewServerMsg(const char *buffer)
+{
+    NewServerMsg msg;
+    msg.decode(buffer);
+    Logger::log("Received new server message: " + msg.address + " " + std::to_string(msg.port));
+    serverSocket->close();
+    delete serverSocket;
+    
+    serverSocket = new SocketClient(msg.address.c_str(), msg.port);
+    serverSocket->connect();
+    serverReceiver->setServerSocket(serverSocket);
 }

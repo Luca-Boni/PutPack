@@ -7,9 +7,10 @@
 #include <filesystem>
 #include <sys/stat.h>
 
-UserManager::UserManager(const std::string username) : Thread(std::bind(&UserManager::execute, this, std::placeholders::_1), NULL),
-                                                       username(username),
-                                                       shouldStop(false)
+UserManager::UserManager(const std::string username, bool backup) : Thread(std::bind(&UserManager::execute, this, std::placeholders::_1), NULL),
+                                                                    username(username),
+                                                                    shouldStop(false),
+                                                                    backup(backup)
 {
     files = std::vector<std::string>();
 
@@ -17,9 +18,10 @@ UserManager::UserManager(const std::string username) : Thread(std::bind(&UserMan
     socketClient = SocketClient("localhost", socketServer.getPort());
 
     fileMutexes = MutexHash<std::string>();
-    fileReaders = std::unordered_map<unsigned long long, FileReader *>();
-    fileWriters = std::unordered_map<unsigned long long, FileWriter *>();
+    fileReaders = std::unordered_map<unsigned long long, std::unordered_map<unsigned long long, FileReader *>>();
+    fileWriters = std::unordered_map<unsigned long long, std::unordered_map<unsigned long long, FileWriter *>>();
     fileWriterSessions = std::unordered_map<unsigned long long, SocketServerSession *>();
+    isSyncing = std::unordered_map<unsigned long long, bool>();
     Logger::log("UserManager created: " + username);
 }
 
@@ -70,6 +72,9 @@ void *UserManager::execute(void *dummy)
         case LIST_SERVER_FILES_MSG:
             processListServerFilesMsg(buffer);
             break;
+        case SET_TO_PRIMARY_MSG:
+            processSetToPrimaryMsg(buffer);
+            break;
         case STOP_MSG: // Para a thread
             shouldStop = true;
             break;
@@ -87,11 +92,17 @@ void *UserManager::execute(void *dummy)
 
 void UserManager::readAllFiles(unsigned long long clientId)
 {
+    isSyncing[clientId] = true;
     for (std::string file : files)
     {
         FileReader *reader = new FileReader(username, clientId, fileMutexes.getOrAddMutex(file), file, &socketClient);
         reader->start();
         reader->waitTillConnect();
+        if (fileReaders.find(clientId) == fileReaders.end())
+        {
+            fileReaders[clientId] = std::unordered_map<unsigned long long, FileReader *>();
+        }
+        fileReaders[clientId][reader->getId()] = reader;
     }
 }
 
@@ -104,9 +115,12 @@ void UserManager::processNewClientMsg(const char *buffer)
     {
         Logger::log("Client already exists: " + username + std::to_string(msg.clientId));
     }
-    else
+    else if (!backup)
     {
         clientManagerSockets[msg.clientId] = msg.clientSocket;
+        char *newBuffer = new char[SOCKET_BUFFER_SIZE]();
+        newBuffer[0] = CLIENT_CONNECTED_MSG;
+        msg.clientSocket->write(buffer);
         readAllFiles(msg.clientId);
     }
 }
@@ -143,13 +157,24 @@ void UserManager::processFileWriteMsg(const char *buffer)
 {
     struct FileHandlerMessage msg;
     msg.decode(buffer);
-    Logger::log("Writing to file: " + username + " " + std::to_string(msg.clientId) + " " + msg.filename + " " + std::to_string(msg.size) + " bytes");
 
-    for (auto &client : clientManagerSockets) // Encaminha modificação para todos os clientes - exceto o que enviou a mensagem
+    if (!backup)
     {
-        if (client.first != msg.clientId)
+        char *okBuffer = new char[SOCKET_BUFFER_SIZE]();
+        okBuffer[0] = OK_MSG;
+        clientManagerSockets[msg.clientId]->write(okBuffer);
+        delete[] okBuffer;
+    }
+
+    Logger::log("Writing to file: " + username + " " + std::to_string(msg.clientId) + " " + msg.filename + " " + std::to_string(msg.size) + " bytes");
+    if (!backup)
+    {
+        for (auto &client : clientManagerSockets) // Encaminha modificação para todos os clientes - exceto o que enviou a mensagem
         {
-            client.second->write(buffer);
+            if (client.first != msg.clientId)
+            {
+                client.second->write(buffer);
+            }
         }
     }
 
@@ -159,28 +184,40 @@ void UserManager::processFileWriteMsg(const char *buffer)
     {
         files.push_back(msg.filename);
     }
-    if (fileWriters.find(msg.clientId) == fileWriters.end()) // Caso o arquivo ainda não esteja sendo escrito
+
+    if (fileWriters.find(msg.clientId) == fileWriters.end())
+    {
+        fileWriters[msg.clientId] = std::unordered_map<unsigned long long, FileWriter *>();
+    }
+
+    if (fileWriters[msg.clientId].find(msg.fileHandlerId) == fileWriters[msg.clientId].end()) // Caso o arquivo ainda não esteja sendo escrito
     {
         writer = new FileWriter(username, msg.clientId, fileMutexes.getOrAddMutex(msg.filename), msg.filename, socketServer.getPort());
-        fileWriters[msg.clientId] = writer;
+        fileWriters[msg.clientId][writer->getId()] = writer;
         writer->start();
         SocketServerSession *newSession = new SocketServerSession(socketServer.listenAndAccept());
-        fileWriterSessions[msg.clientId] = newSession;
+        fileWriterSessions[msg.fileHandlerId] = newSession;
         newSession->write(buffer);
     }
     else // Caso o arquivo já esteja sendo escrito
     {
-        SocketServerSession *session = fileWriterSessions[msg.clientId];
+        SocketServerSession *session = fileWriterSessions[msg.fileHandlerId];
         session->write(buffer);
         if (msg.size == 0)
         {
-            writer = fileWriters[msg.clientId];
+            writer = fileWriters[msg.clientId][msg.fileHandlerId];
             writer->join();
-            fileWriters.erase(msg.clientId);
+            fileWriters[msg.clientId].erase(msg.clientId);
+
+            if (fileWriters[msg.clientId].size() == 0)
+            {
+                fileWriters.erase(msg.clientId);
+            }
+
             delete writer;
 
             session->close();
-            fileWriterSessions.erase(msg.clientId);
+            fileWriterSessions.erase(msg.fileHandlerId);
             delete session;
         }
     }
@@ -190,9 +227,38 @@ void UserManager::processFileReadMsg(const char *buffer)
 {
     struct FileHandlerMessage msg;
     msg.decode(buffer);
+
+    if (msg.size == 0)
+    {
+        fileReaders[msg.clientId].erase(msg.fileHandlerId);
+        if (fileReaders[msg.clientId].size() == 0)
+        {
+            fileReaders.erase(msg.clientId);
+        }
+    }
+
     // Logger::log("Reading file: " + username + " " + std::to_string(msg.clientId) + " " + msg.filename);
     SocketServerSession *clientManagerSocket = clientManagerSockets[msg.clientId];
-    clientManagerSocket->write(buffer);
+    if (!backup)
+        clientManagerSocket->write(buffer);
+
+    if (msg.size == 0 && fileReaders.find(msg.clientId) == fileReaders.end())
+    {
+        if (isSyncing[msg.clientId])
+        {
+            isSyncing[msg.clientId] = false;
+            // Finished syncing all files
+            if (!backup)
+            {
+                char *buffer = new char[SOCKET_BUFFER_SIZE]();
+                buffer[0] = SYNC_FINISHED_MSG;
+                clientManagerSockets[msg.clientId]->write(buffer);
+                delete[] buffer;
+            }
+
+            Logger::log("Finished syncing client " + std::to_string(msg.clientId));
+        }
+    }
 }
 
 void UserManager::processFileDeleteMsg(const char *buffer)
@@ -201,11 +267,14 @@ void UserManager::processFileDeleteMsg(const char *buffer)
     msg.decode(buffer);
     Logger::log("Deleting file: " + username + " " + std::to_string(msg.clientId) + " " + msg.filename);
 
-    for (auto &client : clientManagerSockets) // Encaminha modificação para todos os clientes - exceto o que enviou a mensagem
+    if (!backup)
     {
-        if (client.first != msg.clientId)
+        for (auto &client : clientManagerSockets) // Encaminha modificação para todos os clientes - exceto o que enviou a mensagem
         {
-            client.second->write(buffer);
+            if (client.first != msg.clientId)
+            {
+                client.second->write(buffer);
+            }
         }
     }
 
@@ -229,13 +298,19 @@ void UserManager::stop()
     // Awaits for all file modifications to finish
     for (auto &pair : fileWriters)
     {
-        pair.second->join();
+        for (auto &fileWriter : pair.second)
+        {
+            fileWriter.second->stop();
+        }
     }
 
     // Closes all file readers
     for (auto &pair : fileReaders)
     {
-        pair.second->stop();
+        for (auto &fileReader : pair.second)
+        {
+            fileReader.second->stop();
+        }
     }
 
     // Closes the sockets
@@ -273,15 +348,12 @@ std::string getFileAndMACTimes(const std::filesystem::path &filepath)
 
     std::string out = "";
 
-    out = "Filename: " + filepath.filename().string() + "\n"
-        + "    Last modified: " + mtime + "\n"
-        + "    Last accessed: " + atime + "\n"
-        + "          Created: " + ctime + "\n";
+    out = "Filename: " + filepath.filename().string() + "\n" + "    Last modified: " + mtime + "\n" + "    Last accessed: " + atime + "\n" + "          Created: " + ctime + "\n";
 
     return out;
 }
 
-void UserManager::processListServerFilesMsg(const char* buffer)
+void UserManager::processListServerFilesMsg(const char *buffer)
 {
     ListServerCommandMsg msg;
     msg.decode(buffer);
@@ -298,8 +370,30 @@ void UserManager::processListServerFilesMsg(const char* buffer)
     }
 
     msg.data = filesInfo;
-    char *newBuffer = msg.encode();
-    newBuffer[0] = LIST_SERVER_FILES_MSG;
-    clientManagerSockets[msg.clientId]->write(newBuffer);
-    delete[] newBuffer;
+    if (!backup)
+    {
+        char *newBuffer = msg.encode();
+        newBuffer[0] = LIST_SERVER_FILES_MSG;
+        clientManagerSockets[msg.clientId]->write(newBuffer);
+        delete[] newBuffer;
+    }
+}
+
+void UserManager::setToPrimary()
+{
+    char *buffer = new char[SOCKET_BUFFER_SIZE]();
+    buffer[0] = SET_TO_PRIMARY_MSG;
+    socketClient.write(buffer);
+    delete[] buffer;
+}
+
+void UserManager::processSetToPrimaryMsg(const char *buffer)
+{
+    Logger::log("UserManager: Setting to primary " + username);
+    backup = false;
+}
+
+void UserManager::setClientManagerSockets(std::unordered_map<unsigned long long, SocketServerSession *> clientManagerSockets)
+{
+    this->clientManagerSockets = clientManagerSockets;
 }

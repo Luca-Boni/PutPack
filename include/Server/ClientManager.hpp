@@ -10,11 +10,22 @@
 class ClientManager : public Thread
 {
 private:
+    bool backup;
+    std::string FEAddress;
+    int FEPort;
+    std::string ownAddress;
     std::string username;
     bool shouldStop;
     unsigned long long clientId;
 
+    Mutex setToPrimaryMutex;
+
     std::unordered_set<std::string> filesBeingEdited;
+
+    SocketServer backupServerSocket;
+
+    SocketServer serverDaemonSocketServer;
+    SocketClient serverDaemonSocketClient;
 
     SocketServerSession *socket;
     SocketClient *userManagerSocket;
@@ -30,7 +41,15 @@ private:
     void processFileDelCmdMsg(const char *buffer);
     void processListServerFilesMsg(const char *buffer);
 
+    void processSetToPrimaryMsg(const char *buffer);
+
+    void redirectMsgToBackups(const char *buffer);
+
 public:
-    ClientManager(const std::string username, const unsigned long long clientId, SocketServerSession *socket, SocketClient *userManagerSocket, SocketClient *serverDaemonSocket);
+    ClientManager(const std::string username, const unsigned long long clientId, SocketServerSession *socket, SocketClient *userManagerSocket, SocketClient *serverDaemonSocket, bool backup, std::string FEAddress, int FEPort, std::string ownAddress);
     ~ClientManager(){};
+    SocketClient *getSocketClient() { return &serverDaemonSocketClient; }
+    SocketServerSession *getSocketServerSession() { return socket; }
+
+    void setToPrimary();
 };

@@ -66,6 +66,7 @@ void *Logger::execute(void *dummy)
 
 void Logger::stop()
 {
+    Logger::log("Stopping Logger");
     logFile.close();
     Thread::stop();
 }

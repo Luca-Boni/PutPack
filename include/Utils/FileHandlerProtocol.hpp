@@ -5,7 +5,7 @@
 #include <cstring>
 #include <sys/inotify.h>
 
-#define FILE_BUFFER_SIZE SOCKET_BUFFER_SIZE - (sizeof(char) + sizeof(unsigned long long) + FILENAME_SIZE + sizeof(unsigned int))
+#define FILE_BUFFER_SIZE SOCKET_BUFFER_SIZE - (USERNAME_SIZE + sizeof(char) + sizeof(unsigned long long) + sizeof(unsigned long long) + FILENAME_SIZE + sizeof(unsigned int))
 
 enum class FileHandlerMode : unsigned char
 {
@@ -17,12 +17,14 @@ enum class FileHandlerMode : unsigned char
 struct FileHandlerMessage
 {
     unsigned long long clientId;
+    char username[USERNAME_SIZE];
+    unsigned long long fileHandlerId;
     char* filename;
     unsigned int size;
     char* data;
 
     FileHandlerMessage();
-    FileHandlerMessage(unsigned long long clientId, const char *filename, unsigned int size, const char *data);
+    FileHandlerMessage(unsigned long long clientId, std::string username, unsigned long long fileHandlerId, const char *filename, unsigned int size, const char *data);
     ~FileHandlerMessage();
     char *encode();
     void decode(const char *buffer);
