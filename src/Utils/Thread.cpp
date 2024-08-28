@@ -4,29 +4,29 @@
 
 Thread::Thread()
 {
-    std::signal(SIGTERM, [](int signal) { exit(0); });
-    threadFunction = std::function<void* (void *)>();
+    threadFunction = std::function<void *(void *)>();
     threadArg = NULL;
     isRunning = false;
-    caller = new functionCaller(threadFunction, threadArg);
+    caller = new functionCaller(threadFunction, threadArg, &isRunning);
 }
 
-Thread::Thread(std::function<void* (void *)> func, void *arg)
+Thread::Thread(std::function<void *(void *)> func, void *arg)
 {
-    std::signal(SIGTERM, [](int signal) { exit(0); });
     threadFunction = func;
     threadArg = arg;
     isRunning = false;
-    caller = new functionCaller(threadFunction, threadArg);
+    caller = new functionCaller(threadFunction, threadArg, &isRunning);
 }
 
-void Thread::setThreadFunction(std::function<void* (void *)> func)
+void Thread::setThreadFunction(std::function<void *(void *)> func)
 {
     if (!isRunning)
     {
         threadFunction = func;
         caller->function = threadFunction;
-    }else{
+    }
+    else
+    {
         std::cerr << "Thread is already running" << std::endl;
     }
 }
@@ -37,32 +37,38 @@ void Thread::setThreadArg(void *arg)
     {
         threadArg = arg;
         caller->args = threadArg;
-    }else{
+    }
+    else
+    {
         std::cerr << "Thread is already running" << std::endl;
     }
 }
 
 void Thread::start()
 {
-    isRunning = true;
     pthread_create(&thread, NULL, &functionCaller::callme_static, caller);
 }
 
 void Thread::join()
 {
     pthread_join(thread, NULL);
-    isRunning = false;
 }
 
 void Thread::stop()
 {
-    pthread_kill(thread, SIGTERM);
-    // pthread_join(thread, NULL);
+    if (isRunning)
+        pthread_cancel(thread);
     isRunning = false;
 }
 
 Thread::~Thread()
 {
-    delete caller;
+    if (caller != NULL)
+        delete caller;
     stop();
+}
+
+bool Thread::running()
+{
+    return isRunning;
 }

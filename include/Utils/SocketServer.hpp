@@ -3,26 +3,25 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <tuple>
 
-#define SOCKET_BUFFER_SIZE 8096
+#define SOCKET_BUFFER_SIZE 4096
 
 typedef int socket_t;
 
 class SocketServer
 {
 private:
-    socket_t server_fd;
+    socket_t socket;
     int port;
     int valread;
     struct sockaddr_in address;
     socklen_t address_len;
-    char buffer[SOCKET_BUFFER_SIZE];
 
 public:
-    SocketServer(int port);
-    SocketServer(){};
+    SocketServer(int port = 0);
     ~SocketServer(){};
-    socket_t listenAndAccept();
+    std::tuple<socket_t, struct sockaddr_in> listenAndAccept();
     void close();
     int getPort() { return port; }
 };

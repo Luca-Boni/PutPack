@@ -1,5 +1,10 @@
 curPath=$(dirname $0)
 
+for file in $curPath/obj/Server/*.o
+do
+    rm $file
+done
+
 if [ ! -d $curPath'/obj' ]
 then
     mkdir $curPath'/obj'
@@ -44,4 +49,4 @@ do
     obj=$obj' '$file
 done
 
-g++ -o $curPath/bin/Server/PutPack.exe $obj
+g++ -o $curPath/bin/Server/PutPackServer $obj

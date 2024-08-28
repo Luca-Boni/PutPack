@@ -1,31 +1,52 @@
 #include "Utils/SocketServerSession.hpp"
+#include "Utils/Logger.hpp"
 #include <cstring>
 #include <iostream>
 #include <unistd.h>
 
-SocketServerSession::SocketServerSession(socket_t reader_fd)
+SocketServerSession::SocketServerSession(std::tuple<socket_t, struct sockaddr_in> sessionInfo)
 {
-    this->reader_fd = reader_fd;
+    this->reader_fd = std::get<0>(sessionInfo);
+    this->clientAddress = std::get<1>(sessionInfo);
+    this->writeMutex = Mutex();
+    this->readMutex = Mutex();
 }
 
-void SocketServerSession::read(char buffer[SOCKET_BUFFER_SIZE])
+char* SocketServerSession::read()
 {
-    bzero(buffer, SOCKET_BUFFER_SIZE);
-    if (::read(reader_fd, buffer, SOCKET_BUFFER_SIZE) < 0)
+    readMutex.lock();
+    char *buffer = new char[SOCKET_BUFFER_SIZE]();
+    int total_read = 0;
+
+    while (total_read < SOCKET_BUFFER_SIZE)
     {
-        std::cerr << "Error while reading from socket." << std::endl;
+        int read = 0;
+        if ((read = ::read(reader_fd, buffer + total_read, SOCKET_BUFFER_SIZE - total_read)) < 0)
+        {
+            Logger::log("Error while reading from socket of client " + getClientIP() + ":" + std::to_string(getClientPort()));
+            break;
+        }
+        else
+            total_read += read;
     }
+    
+    readMutex.unlock();
+    return buffer;
 }
 
-void SocketServerSession::write(const char *message, int size)
+void SocketServerSession::write(const char* message)
 {
-    if (::write(reader_fd, message, size) < 0)
+    writeMutex.lock();
+    int size = ::write(reader_fd, message, SOCKET_BUFFER_SIZE);
+    writeMutex.unlock();
+    if (size < 0)
     {
-        std::cerr << "Error while writing to socket." << std::endl;
+        Logger::log("Error while writing to socket of client " + getClientIP() + ":" + std::to_string(getClientPort()));
     }
 }
 
 void SocketServerSession::close()
 {
+    Logger::log("Closing socket of client " + getClientIP() + ":" + std::to_string(getClientPort()));
     ::close(reader_fd);
 }
